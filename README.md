@@ -1,5 +1,3 @@
-# Dissertation
-
 library(survival)
 library(simsurv)
 library(gsDesign)
