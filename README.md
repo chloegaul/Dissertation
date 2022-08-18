@@ -46,15 +46,6 @@ SimOneArmSurvivalData <- function(n, lambda, label){
 
 #This means though that the historical data will also have to have a recruitment time. 
 
-TESTSimOneArmSurvivalData <- SimOneArmSurvivalData(10, 0.01, 1)
-TESTDataToBeChanged <- as.data.frame(cbind(TESTSimOneArmSurvivalData, recruitmenttime = runif(nrow(TESTSimOneArmSurvivalData), 0, 20)))
-TESTDataToBeChanged
-
-TESTCalendarTime <- TESTDataToBeChanged$eventtime + TESTDataToBeChanged$recruitmenttime
-TESTDataToBeChanged2 <- as.data.frame(cbind(TESTDataToBeChanged, calendarTime = TESTCalendarTime))
-TESTDataToBeChanged2
-
-
 RecruitmentAdjustment <- function(SimulatedData, StartofRecruitment, EndofRecruitment, mfut){
   #SimulatedData should be of the form Arm, eventtime, status in order to work. 
   
@@ -139,6 +130,9 @@ CompleteTrialSimulation <- function(n1, lambda1, mfut, label1, n2, lambda2, labe
   
   
 }
+
+
+
 
 
 #Power Functions
