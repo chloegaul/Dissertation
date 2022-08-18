@@ -445,7 +445,6 @@ PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 
 
 
 
-
 #Type 1 errors. 
 set.seed(1234)
 Type1ErrorSeparate <- PowerSeparateAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48)
