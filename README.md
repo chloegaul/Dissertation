@@ -379,171 +379,861 @@ PowerStepLinearTimeTrend <- function(n1, n2, lambda1, lambda2, M, mfut, alpha, l
 }
 
 
-#TESTING 
+#Main Data analysis without variations:
 
+#Generate a Historical Trial 
 
-#Historical Trial 
+#Since the current trial has a control lambda of 0.02100446, we want to test what happens to 
+#The power when historical lambda for the same treatment is the same, lower and higher. 
 
-#Assume there was a previous clinical trial where the experimental group is the same treatment as the current control
-#Assume they were looking for a difference of hazard ratio of 2, with lambda = 0.03 and 0.02 under the control and treatment arm respectively
-#Choosing this because Myeloma trial is expecting lambda1 approx 0.021.  Want the control parameter 
-#very similar to historical experimental arm parameter (same treatment), but a small change in parameter takes large sample
-#size to detect and would make it computationally intensive, so make control in historical 0.03.
-#Assume that the trial was half as long as Myeloma XI. 
-#Using the sample size function, it tells us to use 328 participants in each arm, for witnessing 67 events.
-#alpha, beta and drop out is same, as usually chosen from convention
-nSurvival(lambda1 = 0.03 , lambda2 = 0.02 , Ts = 48 , Tr = 24, ratio = 1, alpha = 0.05 , beta = 0.2 , sided =2, eta = 0.05) 
-
-set.seed(1234) #To obtain the same historical data set 
-HistoricalTrial <- CompleteTrialSimulation(628, 0.03, 48, 0, 628, 0.02, 1, 0, 24, 0.05)
-HistoricalTrial
-
-
-#Current Trial Power Analysis
-
-#The Myeloma trial non-intensive pathway needed 545 events observed, needing 787 participants 
-
-perarmsample = 787/2
-
-lambda1Myeloma = log(2)/33
-lambda1Myeloma
-lambda2Myeloma = log(2)/42
-lambda2Myeloma
-
-#Makes 394 in each arm
-
-#lambda1 = 0.02100446
-#Lambda2 = 0.0165035
-#alpha = 0.05
-#96 month maximum follow up
-#48 month recruitment
-#5% drop out
-
- 
-#Seperate Analysis 
+#So the normal historical data set we have generated as:
 set.seed(1234)
-PowerSeparateAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48) #0.8
+HistoricalTrialMyeloma <- CompleteTrialSimulation(100, 0.03500743, 72, 0, 100, 0.02100446, 1, 0, 36, 0.05)
 
-#For the methods that borrow historical data, we will be assuming they borrow all data available 
-#from the previous trial, on the control treatment
+#100 in each group because this ensures at least 80% power for all variations of lambda2 that we will try.
+#It also just seems like that of a reasonably sized trial. 
+#lambda2 = 0.02100446, same as Myeloma Trial
+#So this represents what will happen under ideal circumstances. 
+#Look for hazard ratio of 0.6, so this makes lambda1 = 0.03500743
+#Make the historical trial about 35% of the length of Myeloma, which makes 72 months total, 36 of which are for accrual period. 
+#Same drop out rate. 
+#We're assuming that the historical trial took place 5 years before, which is important for the last 2 functions. 
+
+#Let us check that the historical data set is powered in its own right
+set.seed(1234)
+PowerHistTrialMyeloma <- PowerSeparateAnalysis(100, 100, 0.03500743, 0.02100446, 1000, 72, 0.05, 1, 2, 0.05, 0, 36) #0.873
+
+#So yes the trial we use is powered on its own. 
+
+
+#Separate Analysis of current data set 
+
+set.seed(1234)
+SeparatePowerHistMyeloma <- PowerSeparateAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48) #0.8 
+#So without incorpoating any historical data, using a cox proportional hazards model to test for this hazard ratio gives us a power of 0.8
+
+
+#Now we see what it does when we incorporate some of the historical data in various ways
 
 #Pooled Analysis
 set.seed(1234)
-PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial, 0.05, 0, 48) #0.798
+PooledPowerHistMyeloma <- PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrialMyeloma, 0.05, 0, 48) #0.84
+
+#This increases the power, which is to be expected since we're essentially just using more data from a data set with the same underlying parameter 
+#And it is therefore just like we have a higher sample size, which would mean a higher power. 
+
 
 #Modelling time trend as a step 
 set.seed(1234)
-PowerStepTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial) #0.801
+PowerStepHistMyeloma <- PowerStepTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma) #0.801
+#Doesn't seem to have made much change. Ever so slight increase in power. 
+
 
 #Modelling time trend as linear
 set.seed(1234)
-PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial, 70, 60) #0.819
+PowerLinearHistMyeloma <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 70, 60) #0.821
+#We see an increase in power
+
 
 #Modelling time trend as linear and step
 set.seed(1234)
-PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial, 70, 60) #0.805
+PowerStepLinearHistMyeloma <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 70, 60) #0.804
+#We see no change in power. 
 
 
-
-#Type 1 errors. 
-set.seed(1234)
-Type1ErrorSeparate <- PowerSeparateAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48)
+#Type 1 Errors
 
 set.seed(1234)
-Type1ErrorPooled <- PowerPooledAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial, 0.05, 0, 48)
+Type1ErrorSeparateMyeloma <- PowerSeparateAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48) #0.057
 
 set.seed(1234)
-Type1ErrorTimeTrend <- PowerStepTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial)
+Type1ErrorPooledMyeloma <- PowerPooledAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrialMyeloma, 0.05, 0, 48) #0.05
 
 set.seed(1234)
-Type1ErrorLinearTimeTrend <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial, 70, 60)
+Type1ErrorTimeTrendMyeloma <- PowerStepTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma) #0.057
 
 set.seed(1234)
-Type1ErrorStepLinearTimeTrend <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial, 70, 60)
+Type1ErrorLinearTrendMyeloma <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 60) #0.056
 
-Type1ErrorSeparate #0.057
-Type1ErrorPooled #0.068
-Type1ErrorTimeTrend #0.057
-Type1ErrorLinearTimeTrend #0.058
-Type1ErrorStepLinearTimeTrend #0.055
-
-#Sensitivity Analysis - HASN'T BEEN RUN
-
-#Sensitivity Analysis when using pooling to borrow historical data. 
-#Create a matrix of combinations of lambda and sample size we want to use for historical data. 
-
-lambdaHistSet <- seq(0.01, 0.02, 0.005)
-nHistSet <- seq(50, 60, 10)
-nHistLambdaHistCombo1 <- cbind(expand.grid(nHist = nHistSet, LambdaHist = lambdaHistSet))
-nHistLambdaHistCombo1
-#Now we have a combination of lambdas and sample sizes we could use for historical borrowing. We want to test each combination of them. 
-
-#For each row of the matrix of combinations, use the lambda and the sample size in that row to simulate a historical data set
-#Then use this historical data set to calculate power when pooling 
-#Obtain a vector of powers, can find which combination of lambda and n gives us highest and lowest power.
+set.seed(1234)
+Type1ErrorStepLinearTrendMyeloma <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 60) #0.054
 
 
-#CompleteTrialSimulation <- function(n1, lambda1, mfut, label1, n2, lambda2, label2, StartofRecruitment, EndofRecruitment, probdropout)
 
 
-SensitivityAnalysisPooled <- function(nControlHist, lambda1Hist, mfutHist, nHistLambdaHistCombo, StartofRecruitmentHist,EndofRecruitmentHist, probdropoutHist)
-{
-  
-  N <- rep(NA, nrow(nHistLambdaHistCombo))
-  
-  for(i in 1:nrow(nHistLambdaHistCombo)){ 
-    
-    HistoricalTrialSensAn <- CompleteTrialSimulation(nControlHist, lambda1Hist, mfutHist, 0, nHistLambdaHistCombo[i,1], nHistLambdaHistCombo[i,2], 1, StartofRecruitmentHist, EndofRecruitmentHist, probdropoutHist)
-    Power <- PowerPooledAnalysis(592, 592, 0.01050223, 0.008251752, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrialSensAn, 0.05, 0, 48)
-    
-    N[i] <- Power
-  }
-  
-  return(N)}
 
-SensitivityAnalysisStep <- function(nControlHist, lambda1Hist, mfutHist, nHistLambdaHistCombo, StartofRecruitmentHist,EndofRecruitmentHist, probdropoutHist)
-{
-  
-  N <- rep(NA, nrow(nHistLambdaHistCombo))
-  
-  for(i in 1:nrow(nHistLambdaHistCombo)){ 
-    
-    HistoricalTrialSensAn <- CompleteTrialSimulation(nControlHist, lambda1Hist, mfutHist, 0, nHistLambdaHistCombo[i,1], nHistLambdaHistCombo[i,2], 1, StartofRecruitmentHist, EndofRecruitmentHist, probdropoutHist)
-    Power <- PowerStepTimeTrend(592, 592, 0.01050223, 0.008251752, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialSensAn)
-    
-    N[i] <- Power
-  }
-  
-  return(N)}
+#Summary
 
-SensitivityAnalysisLinear <- function(nControlHist, lambda1Hist, mfutHist, nHistLambdaHistCombo, StartofRecruitmentHist,EndofRecruitmentHist, probdropoutHist)
-{
-  
-  N <- rep(NA, nrow(nHistLambdaHistCombo))
-  
-  for(i in 1:nrow(nHistLambdaHistCombo)){ 
-    
-    HistoricalTrialSensAn <- CompleteTrialSimulation(nControlHist, lambda1Hist, mfutHist, 0, nHistLambdaHistCombo[i,1], nHistLambdaHistCombo[i,2], 1, StartofRecruitmentHist, EndofRecruitmentHist, probdropoutHist)
-    Power <- PowerLinearTimeTrend(592, 592, 0.01050223, 0.008251752, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialSensAn, 70, 60)
-    
-    N[i] <- Power
-  }
-  
-  return(N)}
+Methods <- c("Separate", "Pooling", "Step Time Trend", "Linear Time Trend", "Step Linear Time Trend")
+MainAnalysisPowers <- c(SeparatePowerHistMyeloma, PooledPowerHistMyeloma, PowerStepHistMyeloma, PowerLinearHistMyeloma, PowerStepLinearHistMyeloma)
+MainAnalysisType1Errors <- c(Type1ErrorSeparateMyeloma, Type1ErrorPooledMyeloma,Type1ErrorTimeTrendMyeloma, Type1ErrorLinearTrendMyeloma, Type1ErrorStepLinearTrendMyeloma)
 
-SensitivityAnalysisLinearStep <- function(nControlHist, lambda1Hist, mfutHist, nHistLambdaHistCombo, StartofRecruitmentHist,EndofRecruitmentHist, probdropoutHist)
-{
-  
-  N <- rep(NA, nrow(nHistLambdaHistCombo))
-  
-  for(i in 1:nrow(nHistLambdaHistCombo)){ 
-    
-    HistoricalTrialSensAn <- CompleteTrialSimulation(nControlHist, lambda1Hist, mfutHist, 0, nHistLambdaHistCombo[i,1], nHistLambdaHistCombo[i,2], 1, StartofRecruitmentHist, EndofRecruitmentHist, probdropoutHist)
-    PowerStepLinearTimeTrend(592, 592, 0.01050223, 0.008251752, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialSensAn, 70, 60)
-    
-    N[i] <- Power
-  }
-  
-  return(N)}
+MainAnalysisData <- as.data.frame(cbind(Methods, MainAnalysisPowers, MainAnalysisType1Errors))
+MainAnalysisData
+
+#Graph
+
+par(mfrow = c(1,1))
+
+plot(MainAnalysisPowers, data = MainAnalysisData, xlab = "Method of Historical Borrowing", ylab = "Power", Main = "Graph Showing Change in Power for Methods of Borrowing the HistoricalTrialMyeloma Data Set", 
+     type = "b", xaxt='n', main = "Change in Power when Borrowing A Historical 
+     Data Set with The Same Underlying Parameter 
+     Using Different Methods")
+axis(1, at = 1:nrow(MainAnalysisData), labels = Methods)
+
+abline(h = SeparatePowerHistMyeloma, col = "blue")
+
+legend(x= "topright", legend= "SeparateAnalysis", lty = 1, col="blue")
+
+
+
+
+#Plotting the Type 1 Errors
+
+plot(MainAnalysisType1Errors, data = MainAnalysisData, xlab = "Method of Historical Borrowing", ylab = "Power", 
+     type = "b", xaxt='n', main = "Change in Type 1 Error when Borrowing A Historical Data Set with The Same Underlying Parameter Using Different Methods")
+axis(1, at = 1:nrow(MainAnalysisData), labels = Methods)
+
+abline(h = Type1ErrorSeparateMyeloma, col = "blue")
+
+legend(x= "bottomright", legend= "SeparateAnalysis", lty = 1, col="blue")
+
+
+#Now, since all of those powers calculated are conditional on the historical data set, we should make some changes to the historical data set 
+#And see how the results are affected
+
+#First, lets make changes to the parameters, more specifically, how close lambda2 in the historical data set is to lambda1 in the current data set (For same treatment)
+#The lambda in the current control is 0.02100446, so lets call this 0.021 correct to 3 dp. 
+#We can test out what happens to the power of the method if we make the historical lambda 0.18, 0.19, 0.2, 0.22, These values have been chosen to see what a change in 0.001 and 0.002 does
+#and what it does when its higher or lower
+#More values can be tested but in this case it was too computationally intensive to do more than this. 
+
+
+#So when the parameter is 0.19 or 0.2, the risk of treatment A was less than it is currently assumed. 
+#We expect this to skew the parameter estimation of the control group to one closer to the treatment, and we may be less likely to conclude change in treatment. 
+#This may result in a higher false positive rate, or alternatively a lower power. 
+
+#When the parameter is 0.22 or 0.23, the risk of treatment A was more historically than is currently assumed. 
+#We expect this to skew the parameter estimation of the control to one further away than the treatment, and may be more likely to conclude change in treatment 
+#This should result in a higher power, because more trials are rejecting the null and we know that there is indeed a treatment difference 
+#But, the rate of false positives, the type I error rate, may increase. Alpha should be bigger. 
+
+
+
+#Make 4 more data sets, each with a different value for lambda2, and lambda1 changes as well in order to keep the 0.6 hazard ratio 
+
+set.seed(1234)
+HistoricalTrial0.018 <- CompleteTrialSimulation(100, 0.03, 72, 0, 100, 0.018, 1, 0, 36, 0.05)
+
+set.seed(1234)
+HistoricalTrial0.019 <- CompleteTrialSimulation(100, 0.03166667, 72, 0, 100, 0.019, 1, 0, 36, 0.05)
+
+set.seed(1234)
+HistoricalTrial0.02 <- CompleteTrialSimulation(100, 0.03333333, 72, 0, 100, 0.02, 1, 0, 36, 0.05)
+
+set.seed(1234)
+HistoricalTrial0.022 <- CompleteTrialSimulation(100, 0.03666667, 72, 0, 100, 0.022, 1, 0, 36, 0.05)
+
+set.seed(1234)
+HistoricalTrial0.023 <- CompleteTrialSimulation(100, 0.03833333, 72, 0, 100, 0.023, 1, 0, 36, 0.05)
+
+#We should check that they appear to have enough power in them as individual trials:
+
+#Separate Analysis
+
+set.seed(1234)
+SeparatePowerHist0.018 <- PowerSeparateAnalysis(100, 100, 0.03, 0.018, 1000, 72, 0.05, 1, 2, 0.05, 0, 36) #0.851
+
+set.seed(1234)
+SeparatePowerHist0.019 <- PowerSeparateAnalysis(100, 100, 0.03166667, 0.019, 1000, 72, 0.05, 1, 2, 0.05, 0, 36) #0.856
+
+set.seed(1234)
+SeparatePowerHist0.02 <- PowerSeparateAnalysis(100, 100, 0.03333333, 0.02, 1000, 72, 0.05, 1, 2, 0.05, 0, 36) #0.858
+
+set.seed(1234)
+PowerHistTrialMyeloma <- PowerSeparateAnalysis(100, 100, 0.03500743, 0.02100446, 1000, 72, 0.05, 1, 2, 0.05, 0, 36) #0.873
+
+set.seed(1234)
+SeparatePowerHist0.022 <- PowerSeparateAnalysis(100, 100, 0.03666667, 0.022, 1000, 72, 0.05, 1, 2, 0.05, 0, 36) #0.877
+
+set.seed(1234)
+SeparatePowerHist0.023 <- PowerSeparateAnalysis(100, 100, 0.03833333, 0.023, 1000, 72, 0.05, 1, 2, 0.05, 0, 36) #0.888
+
+
+#So when we incorporate each of the historical data sets, we know we are incorporating data sets that had adequate power themselves. 
+
+#Summary 
+
+Histlambda0.018 <- 0.018
+Histlambda0.019 <- 0.019
+Histlambda0.02 <- 0.02
+HistlambdaMyeloma <- 0.02100446
+Histlambda0.022 <- 0.022
+Histlambda0.023 <- 0.023
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+
+SeparatePowersHist <- c(SeparatePowerHist0.018,SeparatePowerHist0.019, SeparatePowerHist0.02, PowerHistTrialMyeloma, SeparatePowerHist0.022, SeparatePowerHist0.023)
+
+PowersHistorialData <- as.data.frame(cbind(Lambda2 = lambdas, "Power of Historical Trial" = SeparatePowersHist))
+
+PowersHistorialData
+
+
+#Applying the methods to the 4 new data sets with a different value for lambda
+
+#POWER
+
+#Let us start with the POOLED ANALYSIS. How does the power change when we include data from a historical data set that is not the same, but we treat it as the same. 
+
+#Pooled Analysis when the data set is exactly the same gives us a power of 0.84. 
+
+PooledPowerHistMyeoma #0.84
+
+#We would expect to get lower powers when the underlying parameters are not the same. 
+
+#Pooled Analysis
+set.seed(1234)
+PooledPowerHist0.018 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.018, 0.05, 0, 48) #0.763
+set.seed(1234)
+PooledPowerHist0.019 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.019, 0.05, 0, 48) #0.794
+set.seed(1234)
+PooledPowerHist0.02 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.02, 0.05, 0, 48) #0.827
+set.seed(1234)
+PooledPowerHist0.022 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.022, 0.05, 0, 48) #0.848
+set.seed(1234)
+PooledPowerHist0.023 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.023, 0.05, 0, 48) #0.881
+
+
+par(mfrow = c(2,2))
+
+#GRAPH OF THIS
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+PooledPowers <- c(PooledPowerHist0.018, PooledPowerHist0.019, PooledPowerHist0.02, PooledPowerHistMyeloma, PooledPowerHist0.022, PooledPowerHist0.023)
+
+plot(lambdas, PooledPowers, type = "b", xlab = "Value of Historical Lambda2", ylab = "Power", main = "Plot of Power of the Current Trial when Borrowing 
+Historical Data Sets of Varying Lambda2, 
+     Using Pooled Analysis")
+
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+abline(h = PooledPowerHistMyeloma, lty = "dotted", col = "purple")
+
+
+
+#Now what happens when we model the change in time as a STEP FUNCTION. When the parameter was exactly the same, using this method kept the power roughly the same: 0.801 
+
+PowerStepHistMyeloma  #0.801
+
+#So what about when it is not exactly the same. 
+
+set.seed(1234)
+PowerStepHist0.018 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.018) #0.803
+
+set.seed(1234)
+PowerStepHist0.019 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.019) #0.802
+
+set.seed(1234)
+PowerStepHist0.02 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.02) #0.802
+
+#For these three we actually see an increase in power. This could be because the model is detecting a change where there actually is one and is modelling it
+
+set.seed(1234)
+PowerStepHist0.022 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.022) #0.798
+
+set.seed(1234)
+PowerStepHist0.023 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.023) #0.801
+
+#This last one gets a slightly lower power. Not quite sure why. 
+
+#Graph of this 
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+StepTimePowers <- c(PowerStepHist0.018, PowerStepHist0.019, PowerStepHist0.02, PowerStepHistMyeloma, PowerStepHist0.022, PowerStepHist0.023)
+
+plot(lambdas, StepTimePowers, type = "b", xlab = "Value of Historical Lambda2", ylab = "Power", main = "Plot of Power of the Current Trial when Borrowing
+     Historical Data Sets of Varying Lambda2, 
+     Modelling Time Trends with a Step Function")
+
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+abline(h = PowerStepHistMyeloma, lty = "dotted", col = "purple")
+
+
+#Now lets try the LINEAR function: 
+
+#When lambda2 is exactly the same, this gives a power of 0.821, 
+PowerLinearHistMyeloma #0.821
+
+#Let us see what happens when we change the parameters. 
+
+set.seed(1234)
+PowerLinearHist0.018 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.018, 70, 60) #0.815
+
+set.seed(1234)
+PowerLinearHist0.019 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.019, 70, 60) #0.816
+
+set.seed(1234)
+PowerLinearHist0.02 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.02, 70, 60) #0.821
+
+set.seed(1234)
+PowerLinearHist0.022 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.022, 70, 60) #0.821
+
+set.seed(123)
+PowerLinearHist0.023 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.023, 70, 60) #0.83
+
+
+#Do we get an increase or decrease from 0.821. Since we're incorporating data that has a step change and we're modelling it only in a linear way, might be a misspecified model. 
+#And we might expect to get a smaller power. 
+
+
+#Graph of this 
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+LinearTimePowers <- c(PowerLinearHist0.018, PowerLinearHist0.019, PowerLinearHist0.02, PowerLinearHistMyeloma, PowerLinearHist0.022, PowerLinearHist0.023)
+
+plot(lambdas, LinearTimePowers, type = "b", xlab = "Value of Historical Lambda2", ylab = "Power", main = "Plot of Power of the Current Trial when Borrowing
+     Historical Data Sets of Varying Lambda2, 
+     Modelling Time Trends with a Linear Function")
+
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+abline(h = PowerLinearHistMyeloma, lty = "dotted", col = "purple")
+
+
+#And finally, we can see what happens when we use both the step and the linear model. 
+
+#When using the main trial we got a power of 
+
+PowerStepLinearHistMyeloma #0.804
+
+#What happens when we change lambda2
+
+set.seed(1234)
+PowerStepLinearHist0.018 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.018, 70, 60) #0.804
+
+set.seed(1234)
+PowerStepLinearHist0.019 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.019, 70, 60) #0.803
+
+set.seed(1234)
+PowerStepLinearHist0.02 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.02, 70, 60) #0.805
+
+set.seed(1234)
+PowerStepLinearHist0.022 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.022, 70, 60) #0.802
+
+set.seed(1234)
+PowerStepLinearHist0.023 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.023, 70, 60) #0.802
+
+#What happens to the power? 
+
+
+#Graph of This
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+StepLinearTimePowers <- c(PowerStepLinearHist0.018, PowerStepLinearHist0.019, PowerStepLinearHist0.02, PowerStepLinearHistMyeloma, PowerStepLinearHist0.022, PowerStepLinearHist0.023)
+
+plot(lambdas, StepLinearTimePowers, type = "b", xlab = "Value of Historical Lambda2", ylab = "Power", main = "Plot of Power of Current Trial when Borrowing Historical 
+Data Sets of Varying Lambda2, 
+     Modelling Time Trends with a Step and Linear Function")
+
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+abline(h = PowerStepLinearHistMyeloma, lty = "dotted", col = "purple")
+
+#Table of powers when using methods for varying lambdas 
+
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+
+PooledPowers <- c(PooledPowerHist0.018, PooledPowerHist0.019, PooledPowerHist0.02, PooledPowerHistMyeloma, PooledPowerHist0.022, PooledPowerHist0.023)
+StepTimePowers <- c(PowerStepHist0.018, PowerStepHist0.019, PowerStepHist0.02, PowerStepHistMyeloma, PowerStepHist0.022, PowerStepHist0.023)
+LinearTimePowers <- c(PowerLinearHist0.018, PowerLinearHist0.019, PowerLinearHist0.02, PowerLinearHistMyeloma, PowerLinearHist0.022, PowerLinearHist0.023)
+StepLinearTimePowers <- c(PowerStepLinearHist0.018, PowerStepLinearHist0.019, PowerStepLinearHist0.02, PowerStepLinearHistMyeloma, PowerStepLinearHist0.022, PowerStepLinearHist0.023)
+
+AllPowersLambda <- as.data.frame(cbind(lambdas, PooledPowers, StepTimePowers, LinearTimePowers, StepLinearTimePowers)) 
+AllPowersLambda
+
+
+#TYPE 1 ERROR RATE
+
+
+
+#We also need to take into account the Type I error rates 
+
+#Pooled 
+
+#The usual error is 
+Type1ErrorPooledMyeloma #0.05
+
+#Now we find it for the other values of lambda
+set.seed(1234)
+Type1ErrorPooled0.018 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.018, 0.05, 0, 48) #0.057
+
+set.seed(1234)
+Type1ErrorPooled0.019 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.019, 0.05, 0, 48) #0.053
+
+set.seed(1234)
+Type1ErrorPooled0.02 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.02, 0.05, 0, 48) #0.049
+
+set.seed(1234)
+Type1ErrorPooled0.022 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.022, 0.05, 0, 48) #0.048
+
+set.seed(1234)
+Type1ErrorPooled0.023 <- PowerPooledAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrial0.023, 0.05, 0, 48) #0.057
+
+par(mfrow = c(2,2))
+
+#Graph of this
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+PooledType1Errors <- c(Type1ErrorPooled0.018, Type1ErrorPooled0.019, Type1ErrorPooled0.02, Type1ErrorPooledMyeloma,Type1ErrorPooled0.022,Type1ErrorPooled0.023)
+
+plot(lambdas, PooledType1Errors, type = "b", xlab = "Value of Historical Lambda2", ylab = "Type 1 Error", main = "Plot of Type 1 Error of Current Trial when Borrowing 
+Historical Data Sets of Varying Lambda2, 
+     Using Pooled Analysis")
+
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+abline(h = Type1ErrorPooledMyeloma, lty = "dotted", col = "purple")
+
+
+#Step
+
+#The usual one is 
+Type1ErrorTimeTrendMyeloma #0.062
+
+#Now we find it for the other values of lambda
+set.seed(1234)
+Type1ErrorTimeTrend0.018 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.018) #0.057
+
+set.seed(1234)
+Type1ErrorTimeTrend0.019 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.019) #0.057
+
+set.seed(1234)
+Type1ErrorTimeTrend0.02 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.02) #0.057
+
+set.seed(1234)
+Type1ErrorTimeTrend0.022 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.022) #0.057
+
+set.seed(1234)
+Type1ErrorTimeTrend0.023 <- PowerStepTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.023) #0.057
+
+#Graph of this:
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+StepTimeType1Errors <- c(Type1ErrorTimeTrend0.018, Type1ErrorTimeTrend0.019 , Type1ErrorTimeTrend0.02, Type1ErrorTimeTrendMyeloma, Type1ErrorTimeTrend0.022, Type1ErrorTimeTrend0.023)
+
+plot(lambdas, StepTimeType1Errors, type = "b", xlab = "Value of Historical Lambda2", ylab = "Type 1 Error", main = "Plot of Type 1 Error of Current Trial when Borrowing 
+Historical Data Sets of Varying Lambda2, 
+     Modelling Time Trends with a Step Function")
+
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+abline(h = Type1ErrorTimeTrendMyeloma, lty = "dotted", col = "purple")
+
+
+#Linear 
+
+#The usual one is 
+Type1ErrorLinearTrendMyeloma #0.056
+
+#Now we find it for the other values of lambda
+set.seed(1234)
+Type1ErrorLinearTrend0.018 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.018, 72, 60) #0.056
+
+set.seed(1234)
+Type1ErrorLinearTrend0.019 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.019, 72, 60) #0.056
+
+set.seed(1234)
+Type1ErrorLinearTrend0.02 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.02, 72, 60) #0.057
+
+set.seed(1234)
+Type1ErrorLinearTrend0.022 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.022, 72, 60) #0.057
+
+set.seed(1234)
+Type1ErrorLinearTrend0.023 <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.023, 72, 60) #0.059
+
+#Graph of this:
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+LinearTimeType1Errors <- c(Type1ErrorLinearTrend0.018, Type1ErrorLinearTrend0.019, Type1ErrorLinearTrend0.02, Type1ErrorLinearTrendMyeloma, Type1ErrorLinearTrend0.022, Type1ErrorLinearTrend0.023)
+
+plot(lambdas, LinearTimeType1Errors, type = "b", xlab = "Value of Historical Lambda2", ylab = "Type 1 Error", main = "Plot of Type 1 Error of Current Trial when Borrowing 
+Historical Data Sets of Varying Lambda2, 
+     Modelling Time Trends with a Linear Function")
+
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+abline(h = Type1ErrorLinearTrendMyeloma, lty = "dotted", col = "purple")
+
+
+#Step and Linear
+
+#The usual one is 
+Type1ErrorStepLinearTrendMyeloma  #0.054
+
+#Now we find it for the other values of lambda
+set.seed(1234)
+Type1ErrorStepLinearTrend0.018 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.018, 72, 60) #0.055
+
+set.seed(1234)
+Type1ErrorStepLinearTrend0.019 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.019, 72, 60) #0.056
+
+set.seed(1234)
+Type1ErrorStepLinearTrend0.02 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.02, 72, 60) #0.054
+
+set.seed(1234)
+Type1ErrorStepLinearTrend0.022 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.022, 72, 60) #0.054
+
+set.seed(1234)
+Type1ErrorStepLinearTrend0.023 <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrial0.023, 72, 60) #0.54
+
+#Graph of This
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+StepLinearTimeType1Errors <- c(Type1ErrorStepLinearTrend0.018, Type1ErrorStepLinearTrend0.019, Type1ErrorStepLinearTrend0.02, Type1ErrorStepLinearTrendMyeloma,Type1ErrorStepLinearTrend0.022, Type1ErrorStepLinearTrend0.023)
+
+plot(lambdas, StepLinearTimeType1Errors, type = "b", xlab = "Value of Historical Lambda2", ylab = "Power", main = "Plot of Type 1 Error of Current Trial when Borrowing 
+Historical Data Sets of Varying Lambda2, 
+     Modelling Time Trends with a Step and Linear Function")
+
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+abline(h = Type1ErrorStepLinearTrendMyeloma, lty = "dotted", col = "purple")
+
+
+
+
+
+
+#GRAPHS FOR CHANGE IN HISTORICAL LAMBDA
+
+#Summary
+
+#Historical Lambdas
+Histlambda0.018 <- 0.018
+Histlambda0.019 <- 0.019
+Histlambda0.02 <- 0.02
+HistlambdaMyeloma <- 0.02100446
+Histlambda0.022 <- 0.022
+Histlambda0.023 <- 0.023
+
+lambdas <- c(Histlambda0.018,Histlambda0.019, Histlambda0.02, HistlambdaMyeloma,Histlambda0.022, Histlambda0.023)
+
+#Power
+PooledPowers <- c(PooledPowerHist0.018, PooledPowerHist0.019, PooledPowerHist0.02, PooledPowerHistMyeloma, PooledPowerHist0.022, PooledPowerHist0.023)
+
+StepTimePowers <- c(PowerStepHist0.018, PowerStepHist0.019, PowerStepHist0.02, PowerStepHistMyeloma, PowerStepHist0.022, PowerStepHist0.023)
+
+LinearTimePowers <- c(PowerLinearHist0.018, PowerLinearHist0.019, PowerLinearHist0.02, PowerLinearHistMyeloma, PowerLinearHist0.022, PowerLinearHist0.023)
+
+StepLinearTimePowers <- c(PowerStepLinearHist0.018, PowerStepLinearHist0.019, PowerStepLinearHist0.02, PowerStepLinearHistMyeloma, PowerStepLinearHist0.022, PowerStepLinearHist0.023)
+
+#Type 1 Error
+PooledType1Errors <- c(Type1ErrorPooled0.018, Type1ErrorPooled0.019, Type1ErrorPooled0.02, Type1ErrorPooledMyeloma,Type1ErrorPooled0.022, Type1ErrorPooled0.023)
+
+StepTimeType1Errors <- c(Type1ErrorTimeTrend0.018, Type1ErrorTimeTrend0.019 , Type1ErrorTimeTrend0.02, Type1ErrorTimeTrendMyeloma, Type1ErrorTimeTrend0.022, Type1ErrorTimeTrend0.023)
+
+LinearTimeType1Errors <- c(Type1ErrorLinearTrend0.018, Type1ErrorLinearTrend0.019, Type1ErrorLinearTrend0.02, Type1ErrorLinearTrendMyeloma, Type1ErrorLinearTrend0.022, Type1ErrorLinearTrend0.023)
+
+StepLinearTimeType1Errors <- c(Type1ErrorStepLinearTrend0.018, Type1ErrorStepLinearTrend0.019, Type1ErrorStepLinearTrend0.02, Type1ErrorStepLinearTrendMyeloma,Type1ErrorStepLinearTrend0.022, Type1ErrorStepLinearTrend0.023)
+
+
+DataHistLambda <- as.data.frame(cbind(Lambda = lambdas, PoolPower = PooledPowers, PoolError =PooledType1Errors, StepTimePower = StepTimePowers, 
+                        StepTimeError = StepTimeType1Errors, LinearTimePower = LinearTimePowers, LinearTimeError = LinearTimeType1Errors, 
+                        StepLinearTimePower = StepLinearTimePowers, StepLinearTimeError = StepLinearTimeType1Errors))
+
+DataHistLambda
+
+par(mfrow = c(1,2))
+
+#Plotting Power
+Historicallambdas <- c(rep(lambdas, 4)) #x values of the points to plot
+
+PowersLambdas <- c(PooledPowers, StepTimePowers, LinearTimePowers, StepLinearTimePowers) #y values of the points to plot
+
+MethodsLambdas <- c(rep("Pooling", 5), rep("Step", 5),rep("Linear", 5),rep("StepLinear", 5)) #Methods to colour points by
+
+PowerDataLambdas <- as.data.frame(cbind(HistoricalLambda = Historicallambdas, Power = PowersLambdas, Method = as.factor(MethodsLambdas)))
+
+
+plot(DataLambdas$HistoricalLambda, DataLambdas$Power, col = DataLambdas$Method, pch = 4, xlab = "Historical Lambda2", ylab = "Power", 
+     main = "Plot of Power of the Current Trial when Borrowing Historical 
+     Data using Various Methods, from Historical 
+     Data with Varying Values of Lambda2") #Plot all powers of all methods
+
+#Put lines through points to show trend for each method
+lines(lambdas, PooledPowers, col = "red")
+lines(lambdas,StepTimePowers, col = "green")
+lines(lambdas,LinearTimePowers, col = "black")
+lines(lambdas,StepLinearTimePowers, col = "blue")
+
+#Add lines indicating lambda used in main analysis
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+
+#Add lines indicating power when using lambda in main analysis
+abline(h = PooledPowerHistMyeloma, lty = "dotted", col = "red")
+abline(h = PowerStepHistMyeloma, lty = "dotted", col = "green")
+abline(h = PowerLinearHistMyeloma, lty = "dotted", col = "black")
+abline(h = PowerStepLinearHistMyeloma, lty = "dotted", col = "blue")
+
+#Add legend
+
+legend("bottomright", legend=c("Pooled", "Step Time", "Linear Time", "Step and Linear Time"),col= c("red", "green", "black", "blue"), lty=1, cex=0.8)
+
+
+
+
+
+#Plotting Type 1 Errors
+
+Historicallambdas <- c(rep(lambdas, 4)) #x values of points to plot
+
+ErrorsLambdas <- c(PooledType1Errors, StepTimeType1Errors, LinearTimeType1Errors, StepLinearTimeType1Errors) 
+
+MethodsLambdas <- c(rep("Pooling", 5), rep("Step", 5),rep("Linear", 5),rep("StepLinear", 5)) #Methods to colour points by
+
+Data2Lambdas <- as.data.frame(cbind(HistoricalLambda = Historicallambdas, Type1Error = ErrorsLambdas, Method = as.factor(MethodsLambdas)))
+
+plot(Data2Lambdas$HistoricalLambda, Data2Lambdas$Type1Error, col = Data2Lambdas$Method, pch = 4, 
+     xlab = "Historical Lambda2", ylab = "Type 1 Error", main = "Plot of the Type 1 Error of the Current Trial when Borrowing 
+     Historical Data UsingVarious Methods, from Historical 
+     Data with Varying Values of Lambda2") #Plot all errors from all methods
+
+#Put lines through points to show trend for each method
+lines(lambdas, PooledType1Errors, col = "red")
+lines(lambdas, StepTimeType1Errors, col = "green")
+lines(lambdas, LinearTimeType1Errors, col = "black")
+lines(lambdas, StepLinearTimeType1Errors, col = "blue")
+
+#Add lines indicating lambda used in main analysis
+abline(v = HistlambdaMyeloma, lty = "dotted", col = "purple")
+
+#Add lines indicating power when using lambda in main analysis
+abline(h = Type1ErrorPooledMyeloma, lty = "dotted", col = "red")
+abline(h = Type1ErrorTimeTrendMyeloma, lty = "dotted", col = "green")
+abline(h = TypeIErrorLinearTrendMyeloma, lty = "dotted", col = "black")
+abline(h = TypeIErrorStepLinearTrendMyeloma, lty = "dotted", col = "blue")
+
+#Add legend
+
+legend("topleft", legend=c("Pooled", "Step Time", "Linear Time", "Step and Linear Time"),col= c("red", "green", "black", "blue"), lty=1, cex=0.8)
+
+
+#Changing the time between historical and current trials 
+
+#Now that we have seen how all of the methods work when there is a change in underlying parameter, let us look at how the power changes between more recent and older trials. 
+
+#We have been assuming that the trial was done 5 years ago, and this gives us a power of 0.821
+
+#Let us see what happens if it was done 1-4 years ago. #This time we don't need to change the data set
+#We keep the data set the same, but just change the time between trials in both of the functions that allow us to vary this: 
+
+#First, if we model the time trend as purely linear: 
+
+set.seed(1234)
+PowerLinear1Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 12) #0.824
+
+set.seed(1234)
+PowerLinear2Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 24) #0.821
+
+set.seed(1234)
+PowerLinear3Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 36) #0.82
+
+set.seed(1234)
+PowerLinear4Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 48) #0.82
+
+set.seed(1234)
+PowerLinear6Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 72) #0.82
+
+#We don't really see much change in the power, but we are seeing a very slight increase in power when they're more recent. 
+
+par(mfrow = c(1,2))
+
+#Put this on a Graph itself 
+
+Years <- c(1, 2, 3, 4, 5, 6)
+LinearPowersYears <- c(PowerLinear1Year, PowerLinear2Year, PowerLinear3Year, PowerLinear4Year, PowerLinearHistMyeloma, PowerLinear6Year)
+
+plot(Years, LinearPowersYears, type = "b", xlab = "Years Between Historical and Current Trial", ylab = "Power", main = "Plot of Power of the Current Trial When Borrowing
+   Historical Data Occuring Various Years Ago, 
+     Modelling Time Trends with a Linear Function")
+
+abline(v = 5, lty = "dotted", col = "purple")
+abline(h = PowerLinearHistMyeloma, lty = "dotted", col = "purple")
+
+#Now let us see what changes when we do both a step and linear trend. Assuming that the trial was done 5 years ago, this gives us a power of 0.804. Is there any increase or decrease in that?
+
+set.seed(1234)
+PowerStepLinear1Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 12) #0.804
+
+set.seed(1234)
+PowerStepLinear2Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 24) #0.804
+
+set.seed(1234)
+PowerStepLinear3Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 36) #0.804
+
+set.seed(1234)
+PowerStepLinear4Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 48) #0.804
+
+set.seed(1234)
+PowerStepLinear6Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 72) #0.804
+
+#Do a graph of this
+
+Years <- c(1, 2, 3, 4, 5, 6)
+StepLinearPowersYears <- c(PowerStepLinear1Year, PowerStepLinear2Year, PowerStepLinear3Year, PowerStepLinear4Year, PowerStepLinearHistMyeloma, PowerStepLinear6Year)
+
+plot(Years, StepLinearPowersYears, type = "b", xlab = "Years Between Historical and Current Trial", ylab = "Power", main = "Plot of Power of the Current Trial When Borrowing
+     Historical Data Occuring Various Years Ago, 
+     Modelling Time Trends with a Linear and Step Function")
+
+abline(v = 5, lty = "dotted", col = "purple")
+abline(h = PowerStepLinearHistMyeloma, lty = "dotted", col = "purple")
+
+
+
+#And we also need to take into account the Type 1 Error
+
+#Linear 
+
+set.seed(1234)
+Type1ErrorLinearTimeTrend1Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 12) #0.059
+
+set.seed(1234)
+Type1ErrorLinearTimeTrend2Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 24) #0.058
+
+set.seed(1234)
+Type1ErrorLinearTimeTrend3Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 36) #0.059
+
+set.seed(1234)
+Type1ErrorLinearTimeTrend4Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 48) #0.059
+
+set.seed(1234)
+Type1ErrorLinearTimeTrend6Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 72) #0.057
+
+#Graph the Type 1 Errors
+
+par(mfrow = c(1,2))
+
+Years <- c(1, 2, 3, 4, 5, 6)
+LinearType1ErrorsYears <- c(Type1ErrorLinearTimeTrend1Year, Type1ErrorLinearTimeTrend2Year, Type1ErrorLinearTimeTrend3Year, Type1ErrorLinearTimeTrend4Year, TypeIErrorLinearTrendMyeloma, Type1ErrorLinearTimeTrend6Year)
+
+plot(Years, LinearType1ErrorsYears, type = "b", xlab = "Years Between Historical and Current Trial", ylab = "Type 1 Error", main = "Plot of Type 1 Error of the Current Trial When Borrowing
+     Historical Data Occuring Various Years Ago, 
+     Modelling Time Trends with a Linear Function")
+
+abline(v = 5, lty = "dotted", col = "purple")
+abline(h = TypeIErrorLinearTrendMyeloma, lty = "dotted", col = "purple")
+
+#Step and Linear 
+
+
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend1Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 12) #0.054
+
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend2Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 24) #0.054
+
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend3Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 36) #0.054
+
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend4Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 48) #0.054
+
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend6Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 72) #0.054
+
+#Graph the Type 1 Errors
+
+Years <- c(1, 2, 3, 4, 5, 6)
+StepLinearType1ErrorsYears <- c(Type1ErrorStepLinearTimeTrend1Year, Type1ErrorStepLinearTimeTrend2Year, Type1ErrorStepLinearTimeTrend3Year, Type1ErrorStepLinearTimeTrend4Year, TypeIErrorStepLinearTrendMyeloma,
+                                Type1ErrorStepLinearTimeTrend6Year)
+
+plot(Years, StepLinearType1ErrorsYears, type = "b", xlab = "Years Between Historical and Current Trial", ylab = "Type 1 Error", main = "Plot of Type 1 Error of the Current Trial When Borrowing
+     Historical Data Occuring Various Years Ago, 
+     Modelling Time Trends with a Linear and Step Function")
+
+abline(v = 5, lty = "dotted", col = "purple")
+abline(h = TypeIErrorStepLinearTrendMyeloma, lty = "dotted", col = "purple")
+
+
+
+#GRAPH FOR CHANGING TIME BETWEEN TRIALS 
+
+#Summary
+
+#Years
+Years <- c(1, 2, 3, 4, 5, 6)
+
+#Powers
+LinearPowersYears <- c(PowerLinear1Year, PowerLinear2Year, PowerLinear3Year, PowerLinear4Year, PowerLinearHistMyeloma, PowerLinear6Year)
+StepLinearPowersYears <- c(PowerStepLinear1Year, PowerStepLinear2Year, PowerStepLinear3Year, PowerStepLinear4Year, PowerStepLinearHistMyeloma, PowerStepLinear6Year)
+
+#Type 1 Errors
+LinearType1ErrorsYears <- c(Type1ErrorLinearTimeTrend1Year, Type1ErrorLinearTimeTrend2Year, Type1ErrorLinearTimeTrend3Year, Type1ErrorLinearTimeTrend4Year, TypeIErrorLinearTrendMyeloma, Type1ErrorLinearTimeTrend6Year)
+StepLinearType1ErrorsYears <- c(Type1ErrorStepLinearTimeTrend1Year, Type1ErrorStepLinearTimeTrend2Year, Type1ErrorStepLinearTimeTrend3Year, Type1ErrorStepLinearTimeTrend4Year, TypeIErrorStepLinearTrendMyeloma, Type1ErrorStepLinearTimeTrend6Year)
+
+DataHistTime <- as.data.frame(cbind(YearsBetweenTrials = Years, LinearPower = LinearPowersYears, LinearErrors = LinearType1ErrorsYears, 
+                                    StepLinearPower = StepLinearPowersYears , StepLinearError = StepLinearType1ErrorsYears))
+
+DataHistTime
+
+par(mfrow = c(1,2))
+
+#Graph for Powers
+
+YearsxAxis <- c(rep(Years, 2))
+PowersYears <- c(LinearPowersYears, StepLinearPowersYears)
+MethodsYears <- c(rep("Linear", 5),rep("StepLinear", 5))
+DataYears <- as.data.frame(cbind(Years = YearsxAxis, Power = PowersYears, Method = as.factor(MethodsYears)))
+
+
+
+#Plot the Powers
+plot(DataYears$Years, DataYears$Power, col = DataYears$Method, pch = 4, xlab = "Years Between Trials", ylab = "Power", 
+     main = "Plot of Power of the Current Trial When Borrowing
+     Historical Data Occuring Various Years Ago, 
+     Modelling Time Trends in Two Different Ways")
+
+#Put line through points
+lines(Years, LinearPowersYears, col = "red")
+lines(Years, StepLinearPowersYears, col = "green")
+
+#Add lines indicating Year used in main analysis
+abline(v = 5, lty = "dotted", col = "purple")
+
+#Add lines indicating power when using Year in main analysis
+abline(h = PowerLinearHistMyeloma, lty = "dotted", col = "red")
+abline(h = PowerStepLinearHistMyeloma, lty = "dotted", col = "green")
+
+#Add legend
+
+legend(1, 0.808, legend=c("Linear Time", "Step and Linear Time"), col= c("red", "green"), lty=1, cex=0.8)
+
+
+#Graph for Errors
+
+#Then plot the type 1 Errors
+
+YearsxAxis <- c(rep(Years, 2))
+ErrorsYears <- c(LinearType1ErrorsYears, StepLinearType1ErrorsYears)
+MethodsYears <- c(rep("Linear", 5),rep("StepLinear", 5))
+Data2Years <- as.data.frame(cbind(Years = YearsxAxis, Type1Error = ErrorsYears, Method = as.factor(MethodsYears)))
+Data2Years
+
+plot(Data2Years$Years, Data2Years$Type1Error, col = Data2Years$Method, pch = 4, xlab = "Years Between Trials", ylab = "Type 1 Error", 
+     main = "Plot of Type 1 Error of the Current Trial When Borrowing
+     Historical Data Occuring Various Years Ago, 
+     Modelling Time Trends in Two Different Ways")
+
+lines(Years, LinearType1ErrorsYears, col = "red")
+lines(Years, StepLinearType1ErrorsYears, col = "green")
+
+
+#Add lines indicating year used in main analysis
+abline(v = 5, lty = "dotted", col = "purple")
+
+#Add lines indicating power when using year in main analysis
+abline(h = TypeIErrorLinearTrendMyeloma, lty = "dotted", col = "red")
+abline(h = TypeIErrorStepLinearTrendMyeloma, lty = "dotted", col = "green")
+
+#Add legend
+
+legend(1, 0.055, legend=c("Linear Time", "Step and Linear Time"),col= c("red", "green"), lty=1, cex=0.8)
+
+
 
 
