@@ -1202,10 +1202,9 @@ legend(0.018, 0.0593, legend=c("Pooled", "Step Time", "Linear Time", "Step and L
 
 
 
+# - SENSITIVITY ANALYSIS - CHANGE IN TIME BETWEEN TRIALS - To be considered alongside Section 6.3 - 
 
-
-##POWER - Sensitivity Analysis - Change in time between trials 
-
+##POWER 
 
 #Model time trends using a linear function
 
