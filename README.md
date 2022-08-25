@@ -1,66 +1,57 @@
+
+#Packages Used:
 library(survival)
 library(simsurv)
 library(gsDesign)
 
-#Simulate Survival Data
 
-#Function that simulates one arm of exponential survival data: control, treatment and historical data can be generated through this 
-#by just inputting different argument values. The function just simulates survival data and gives it a label to say which arm it is from.
+
+
+# - SIMULATING SURVIVAL DATA - To be considered alongside Section 6.3 - 
+
+
+#Function that simulates one arm of exponential survival data. There is no upper limit for the survival times when using this function, 
+#as this is used to generate true event times. No censoring is applied until later steps. 
 
 SimOneArmSurvivalData <- function(n, lambda, label){
   
   #n: number of observations to be simulated 
-  #lambda: scale parameter of the exponential distribution we assume the data follows
-  #label: the value to assign the observations to indicate which arm the data belongs to. 
+  #lambda: scale parameter of the exponential distribution survival times are assumed to follow
+  #label: the value to assign the observations to indicate which arm the data belongs to 
   
-  x = data.frame(id = 1:n) 
+  x = data.frame(id = 1:n)  
   
-  SurvivalData <- as.data.frame(simsurv(dist = "exponential", lambdas = lambda, x=x)) 
+  SurvivalData <- as.data.frame(simsurv(dist = "exponential", lambdas = lambda, x=x)) #use simsurv function to simulate exponential data
   
-  Label <- as.factor(rep(label,n)) 
+  Label <- as.factor(rep(label,n)) #Assign label to indicate treatment arm
   
-  FinalData <- cbind(Arm = Label, SurvivalData) 
+  FinalData <- cbind(Arm = Label, SurvivalData) #Combine survival object with arm label
   
   return(FinalData)
   
 }
 
-#When data is simulated through this function, it has no maximum upper limit, and therefore no censored observations, 
-#cos we aren't taking into account the end of the trial yet and drop out until later on. This output represents how long this person actually lives for. 
 
 
-#We have event times when assuming all participants were recruited at the start of the trial, this is not the case, so we need to shift the event times
-#To reflect that they've started at different points. 
-
-#With knowledge of the start and end point of the recruitment/accrual period, randomly assign each observation a time of recruitment, 
-#assume uniform distribution.
-
-#Once we have their recruitment time, we want to find the calendar time of when we stopped observing that person, which will be the recruitment
-#time plus the event time
-#So now we want to see if their calendar time is valid. If the calendar time is longer than the full length of the study, because of their given 
-#recruitment time, we set their actual event time for the largest it would end up being, which is the maximum time, minus their recruitment time
-#If they did not reach the end of the study, keep the event time the way it is. 
-
-#The event time to be used in the model will not be eventtime but will be the newly defined ActualEventTime. 
-#And then recruitment time can be used to make a time variable in the power functions.  
-
-#This means though that the historical data will also have to have a recruitment time. 
+#Construct a function that takes a data set of true survival times, assigns a random recruitment time based on uniform distribution and adjusts their event times accordingly. Observations are #censored if the recruitment time results in the true event occuring outside of the trial time constraints. 
 
 RecruitmentAdjustment <- function(SimulatedData, StartofRecruitment, EndofRecruitment, mfut){
-  #SimulatedData should be of the form Arm, eventtime, status in order to work. 
+  
   
   #Assign each patient a random (uniform distribution) recruitment time. 
   DataToBeChanged <- as.data.frame(cbind(SimulatedData, recruitmenttime = runif(nrow(SimulatedData), StartofRecruitment, EndofRecruitment)))
+  
   #Use this to find the time the observation was taken in calendar time. 
   calendarTime <- DataToBeChanged$eventtime + DataToBeChanged$recruitmenttime
+  
   DataToBeChanged2 <- as.data.frame(cbind(DataToBeChanged, calendarTime = calendarTime))
   
-  ActualEventTime<- rep(NA, nrow(DataToBeChanged2)) #Create a variable that is the actual event time we will use. 
+  ActualEventTime<- rep(NA, nrow(DataToBeChanged2)) #Create a vector to store actual event times after any censoring has been applied.
   
   for(i in 1:nrow(DataToBeChanged2)){
-    if (DataToBeChanged2[i, ]$calendarTime >= mfut){ #If calendar time is more than the full length of the trial, event time needs to be changed
-      ActualEventTime[i] = mfut - DataToBeChanged2[i, ]$recruitmenttime #They reached end of trial so event time will be time between recruitment and end 
-      DataToBeChanged2[i, ]$status = rep(0, 1) #say its been censored.
+    if (DataToBeChanged2[i, ]$calendarTime >= mfut){ #If calendar time is more than the full length of the trial, event time is censored
+      ActualEventTime[i] = mfut - DataToBeChanged2[i, ]$recruitmenttime #New event time will be time between recruitment and end 
+      DataToBeChanged2[i, ]$status = rep(0, 1) #indicate this event time is censored
     }
     else{ 
       ActualEventTime[i] = DataToBeChanged2[i, ]$eventtime #If calendar time is not full length of trial, ActualEventTime = eventtime. 
@@ -71,111 +62,113 @@ RecruitmentAdjustment <- function(SimulatedData, StartofRecruitment, EndofRecrui
 }
 
 
+#Construct a function to apply to a full survival data set that is otherwise finalised but no patients have dropped out 
+#When there is no drop out assumed, this function does not need to be used 
+#When some drop out is expected, this function alters the survival data set to reflect a certain incidence of drop out in the trial 
 
-#Drop Out Function
+#Whether or not someone has dropped out is binomially distributed with a probability p of dropping out: Bin(p). 
+#Use this to randomly decide whether each observation is from a patient who has dropped out, and randomly assign new event time no larger than their 
+#simulated event time for patients considered to have dropped out.
 
-#To be applied to survival data sets that do not yet take into account drop out during the trial, and returns a data set 
-#That has some observations amended in a way that reflects a certain expected drop out rate throughout the trial. 
-
-#Says that whether or not someone has dropped out is binomially distributed with a probability p of dropping out: Bin(p). 
-#Using this, randomly decide whether each observation is from someone who has dropped out or not.
-
-#For the ones who have, give them a new event time: eventtime x p, where p is a randomly generated number between 0 and 1.
-#Will also need to say that the observation is now censored, and the event time is the time of their dropping out
-#This results in event times that are correlated to the time that they dropped out, which is reasonable because the event time 
-#a person is censored at when they drop out, is certainly related to when they have dropped out. 
-#For example, someone would not be censored at 5 months when they didn't drop out until 10 months in. 
-
-#When someone has not dropped out, their observation remains the same. 
-
-DropOut <- function(DataWithoutDropOut, probdropout){
+DropOut <- function(DataWithoutDropOut, probdropout){ 
   
   #DataWithoutDropOut: A survival data set that does not yet take into account drop out 
-  #probdropout: the expected drop out rate of the trial: eg 0.05 for 5% drop out rate
+  #probdropout: the expected drop out rate of the trial expressed as a decimal, for example: 0.05 for 5% drop out rate
   
-  DropoutIndicator <- rbinom(n = nrow(DataWithoutDropOut), size = 1, prob = probdropout) #Create dropout indicator
-  DataWithIndicator <- as.data.frame(cbind(DataWithoutDropOut, DropoutIndicator)) #Add the indicator variable to select observations that have dropped out
+  DropoutIndicator <- rbinom(n = nrow(DataWithoutDropOut), size = 1, prob = probdropout) #Create dropout indicator, binomially distributed with drop out rate p
+  DataWithIndicator <- as.data.frame(cbind(DataWithoutDropOut, DropoutIndicator)) #Add the indicator variable to data set to assign observations from drop out
   
   for(i in 1:nrow(DataWithIndicator)){
     if (DataWithIndicator[i, ]$DropoutIndicator == 1) { 
-      p <- runif(1, 0, 1)
-      DataWithIndicator[i, ]$ActualEventTime <- DataWithIndicator[i, ]$ActualEventTime*p #If they've dropped out give random event time less than the simulated one
-      DataWithIndicator[i, ]$status <- rep(0, 1) #And consider it censored
+      p <- runif(1, 0, 1) #Generate a random number, uniformly distributed for equal chance of any number between 0 and 1
+      DataWithIndicator[i, ]$ActualEventTime <- DataWithIndicator[i, ]$ActualEventTime*p #If patients has dropped out assign random event time less than simulated time
+      DataWithIndicator[i, ]$status <- rep(0, 1) #Indicate that this observation has is censored
     } else{
-      DataWithIndicator[i, ]$ActualEventTime <- DataWithIndicator[i, ]$ActualEventTime #If they haven't dropped out it stays the same.
-      DataWithIndicator[i, ]$status <- DataWithIndicator[i, ]$status
+      DataWithIndicator[i, ]$ActualEventTime <- DataWithIndicator[i, ]$ActualEventTime #If patient hasn't dropped out event time remains the same
+      DataWithIndicator[i, ]$status <- DataWithIndicator[i, ]$status #censoring status remains the same. 
     }
   }
-  return(DataWithIndicator)
+  return(DataWithIndicator) #Returns data set with drop out taken into account. 
 }
 
-#Use these three functions to simulate a data set to be used directly in power analysis, that has been adjusted for drop out and to
-#Reflect participants being recruited at different times across a period. 
+#Combine functions SimOneArmSurvivalData, RecruitmentAdjustment and DropOut into one function that simulates a finalised survival (exponential) data set
 
 CompleteTrialSimulation <- function(n1, lambda1, mfut, label1, n2, lambda2, label2, StartofRecruitment, EndofRecruitment, probdropout){
   
   
-  ConcurrentControlData <- SimOneArmSurvivalData(n1, lambda1, label1) #Simulate concurrent control survival data
+  ConcurrentControlData <- SimOneArmSurvivalData(n1, lambda1, label1) #Simulate true control survival data and give control label
   
-  TreatmentData <- SimOneArmSurvivalData(n2, lambda2, label2) #Simulate treatment group survival data
+  TreatmentData <- SimOneArmSurvivalData(n2, lambda2, label2) #Simulate true treatment group survival dara and give treatment label
   
-  FullTrialData <- rbind(ConcurrentControlData, TreatmentData) #Create full survival data set of survival times  
+  FullTrialData <- rbind(ConcurrentControlData, TreatmentData) #Combine true control and treatment data into one data set
+  
   FullTrialData <- FullTrialData[ , -2] #Remove duplicate id column
   
-  FullTrialDataRecruitmentAdj <- RecruitmentAdjustment(FullTrialData, StartofRecruitment, EndofRecruitment, mfut)
+  FullTrialDataRecruitmentAdj <- RecruitmentAdjustment(FullTrialData, StartofRecruitment, EndofRecruitment, mfut) #Assign recruitment time and adjust event time
+                                                                                                                  #censoring when appropriate
   
-  FinalTrialData <- DropOut(FullTrialDataRecruitmentAdj, probdropout)
+  FinalTrialData <- DropOut(FullTrialDataRecruitmentAdj, probdropout) #Apply drop out function to take into account a certain rate of patient drop out
   
-  return(FinalTrialData)
-  
+  return(FinalTrialData) #return final survival data set
   
 }
 
 
 
+# - POWER FUNCTIONS- To be considered alongside Sections 6.2, 6.5.1, 6.5.2, and 6.6 - 
 
+#Some notes on the following functions:   
 
-#Power Functions
+#THE CHOICE OF LAMBDA1 AND LAMBDA2 DETERMINES WHETHER THIS FUNCTION CALCULATES POWER OR TYPE 1 ERROR RATE.
+#When lambda1 = lambda2, type 1 error rate is calculated, as no true difference in survival times between treatments exists
+#When lambda1 is not equal to lambda2, this function calculates power, as there is a true difference in survival times between treatment arms.
+
+#Any functions using historical trial data should have as its input a historical data set where the TREATMENT group observations 
+#have the same label as the CONTROL group observations of the current data set, given to be 1 here.
+#This is what is required for the model to recognise both historical and current data as being control observations. 
+
 
 #Power when using Separate Analysis
 
 PowerSeparateAnalysis <- function(n1, n2, lambda1, lambda2, M, mfut, alpha, label1, label2, probdropout, StartofRecruitment, EndofRecruitment) { 
   
-  #For the use of CompleteTrialSimulation: 
   #n1 : number of participants in control group
   #n2 : number of participants in treatment group
-  #lambda1 : exponential scale parameter for survival distribution of control group
-  #lambda2 : exponential scale parameter for survival distribution of treatment group
-  #mfut: max follow up time
+  #lambda1 : exponential scale parameter for survival times in the control group
+  #lambda2 : exponential scale parameter for survival times in the treatment group
+  
+  #mfut: Maximum follow up time = accrual period + minimum follow up 
   #label1: identifer to be given to control group
   #label2: identifier to be given to treatment group
+  #probdropout: drop out rate 
+  #StartofRecruitment: Usually 0 as this would be the start of the trial
+  #EndofRecruitment: The length of the accrual period
   
-  #For actual power calculation
+  #Recruitment and follow up times are given in months throughout this analysis, but can be expressed as any unit of time as long as the  
+  #hazard rates lambda1 and lambda2 have also been calculated using this same measurement.
+  
   #M: Number of trials to be simulated
   #alpha : two sided significance level
   
-  N <- rep(NA, M) #Creating a vector in which we can store indicator variable of whether or not the null hypothesis was rejected for each 
-  #simulated trial
+  
+  N <- rep(NA, M) #Create a vector in which an indicator variable of whether or not the null hypothesis was rejected for each simulated trial will be stored
   
   for (i in 1:M) {
-    #Simulate current data set
+  
+    #Simulate a full current data set, representing a current survival trial
     CurrentData <- CompleteTrialSimulation(n1, lambda1, mfut, label1, n2, lambda2, label2, StartofRecruitment, EndofRecruitment, probdropout)
     
-    ModelSeparate <- coxph(Surv(ActualEventTime, status) ~ Arm, data = CurrentData) #Use survival object to fit a cox proportional hazards model. 
+    #Use survival object to fit a cox proportional hazards model, conditional on the arm of the trial to estimate treatment effect
+    ModelSeparate <- coxph(Surv(ActualEventTime, status) ~ Arm, data = CurrentData)  
     
-    if (summary(ModelSeparate)$coefficients[,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if wasn't
+    if (summary(ModelSeparate)$coefficients[,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if it was not
       N[i] <- 1
     } else {
       N[i] <- 0 
     }
   }
-  return(sum(N)/M) #Number of trials that rejected the null/total trials = power.
+  return(sum(N)/M) #return proportion of trials that rejected the null hypothesis, out of those simulated.
 }
-
-
-
-#Note that the functions using historical trial data only work if the TREATMENT of historical is given a value of 1 - as this is what becomes control 
-#in the current trial, and needs to have a value of 1 to be recognized as a control observation. 
 
 
 #Power when using Pooled Analysis to borrow historical data
@@ -184,153 +177,159 @@ PowerSeparateAnalysis <- function(n1, n2, lambda1, lambda2, M, mfut, alpha, labe
 
 PowerPooledAnalysis <- function(n1, n2, lambda1, lambda2, M, mfut, alpha, label1, label2, HistoricalTrial, probdropout, StartofRecruitment, EndofRecruitment) { 
   
-  #To be used in CompleteTrialSimulation function
   #n1 : number of participants in control group
   #n2 : number of participants in treatment group
-  #lambda1 : exponential scale parameter for survival distribution of control group
-  #lambda2 : exponential scale parameter for survival distribution of treatment group
-  #M: Number of trials to be simulated
-  #mfut: max follow up time
+  #lambda1 : exponential scale parameter for survival times in the control group
+  #lambda2 : exponential scale parameter for survival times in the treatment group
+  #mfut: maximum follow up time = accrual period + minimum follow up
   #label1: identifier to be given to control group
   #label2: identifier to be given to treatment group
-  #HistoricalControlData: the data set to be incorporated, only the observations to be used in analysis should be in this data set
-  #probdropout : drop out rate for current trial
+  
+  #probdropout: drop out rate 
+  #StartofRecruitment: Usually 0 as this would be the start of the trial
+  #EndofRecruitment: The length of the accrual period
   
   #For power calculation
   #M: Number of trials to be simulated
   #alpha : two sided significance level
   
+  #HistoricalTrial: the data set to be incorporated into analysis, only the observations to be used in analysis should be in this data set
   
-  N <- rep(NA, M) #Creating a vector in which we can store indicator variable of whether or not the null hypothesis was rejected for each 
-  #simulated trial
+  
+  N <- rep(NA, M) #Create a vector in which an indicator variable of whether or not the null hypothesis was rejected for each simulated trial is stored
   
   for (i in 1:M) {
     
     CurrentTrial <- CompleteTrialSimulation(n1, lambda1, mfut, label1, n2, lambda2, label2, StartofRecruitment, EndofRecruitment, probdropout) #Simulate current trial 
     
-    HistoricalControlData <- HistoricalTrial[which(HistoricalTrial$Arm == 1), ] #Extract only Treatment data from historical trial. 
-    #This is because treatment in historical trial = control in current trial
+    HistoricalControlData <- HistoricalTrial[which(HistoricalTrial$Arm == 1), ] #Extract only Treatment data from historical trial as:
+                                                                                #treatment in historical trial = control in current trial = historical control data
     
     FinalTrialDataPooled <- rbind(CurrentTrial, HistoricalControlData) #Add historical data into data set for analysis
     
-    ModelPooled <- coxph(Surv(ActualEventTime, status) ~ Arm, data = FinalTrialDataPooled) #Use survival object to fit a cox proportional hazards model. 
+    #Use survival object to fit a cox proportional hazards model using the arm of the trial as a covariate.
     
-    if (summary(ModelPooled)$coefficients[1,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if wasn't
+    ModelPooled <- coxph(Surv(ActualEventTime, status) ~ Arm, data = FinalTrialDataPooled) 
+    
+    if (summary(ModelPooled)$coefficients[1,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if it was not
       N[i] <- 1
     } else {
       N[i] <- 0 
     }
   }
-  return(sum(N)/M) #Number of trials that rejected the null/total trials = power. 
+  return(sum(N)/M) #return proportion of trials that rejected the null hypothesis, out of those simulated.
 }
 
 
 
 
-
-#Power when modelling the time as a step change in time. 
+#Power when modelling the time trends using a step function.
 
 PowerStepTimeTrend <- function(n1, n2, lambda1, lambda2, M, mfut, alpha, label1, label2, probdropout, StartofRecruitment, EndofRecruitment, 
                                HistoricalTrial) { 
   
-  N <- rep(NA, M) #Creating a vector in which we can store indicator variable of whether or not the null hypothesis was rejected for each 
-  #simulated trial
+  N <- rep(NA, M) #Create a vector in which an indicator variable of whether or not the null hypothesis was rejected for each simulated trial is stored.
   
   for (i in 1:M) {
     
     #Simulate current data set
     CurrentTrial <- CompleteTrialSimulation(n1, lambda1, mfut, label1, n2, lambda2, label2, StartofRecruitment, EndofRecruitment, probdropout)
     
-    HistoricalControlData <- HistoricalTrial[which(HistoricalTrial$Arm == 1), ] #Extract the treatment data from historical trial. 
-    #This is because treatment in historical trial = control in current trial
+    HistoricalControlData <- HistoricalTrial[which(HistoricalTrial$Arm == 1), ] #Extract the treatment data from historical trial as:
+                                                                                #treatment in historical trial = control in current trial = historical control data
     
-    Current <- rep(1 ,nrow(CurrentTrial)) 
-    Historical <- rep(0, nrow(HistoricalControlData)) 
+    
+    Current <- rep(1 ,nrow(CurrentTrial))  #Generate vector of 1s to act as a label for current data
+    Historical <- rep(0, nrow(HistoricalControlData)) #Generate a vector of 0s to act as a label for historical data
     
     CurrentTrial2 <- as.data.frame(cbind(CurrentTrial, HistOrCurrent = Current))  #Assign current data value of 1
     HistoricalControlData2 <-as.data.frame(cbind(HistoricalControlData, HistOrCurrent = Historical)) #Assign historical data value of 0
     
+
     CombinedFinalTrialData <- rbind(CurrentTrial2, HistoricalControlData2) #Add historical data into data set for analysis
     
-    #Fit model, dependent on arm and whether data is historical or current, which is used a step change in time
+    #Use survival object to fit a cox proportional hazards model, using the covariates of: the arm of the trial and whether or not the data is historical 
+    #or current (which is binary and therefore is a step function with a step between 0 (historical) and 1(current))
+    
     ModelStep <- coxph(Surv(ActualEventTime, status) ~ Arm + HistOrCurrent , data = CombinedFinalTrialData)  
     
-    if (summary(ModelStep)$coefficients[1,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if wasn't
+    if (summary(ModelStep)$coefficients[1,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if it was not
       N[i] <- 1
     } else {
       N[i] <- 0 
     }
   }
-  return(sum(N)/M) #Number of trials that rejected the null/total trials = power. 
+  return(sum(N)/M)  #return proportion of trials that rejected the null hypothesis, out of those simulated.
 }
 
 
 
 
-
-#Power when modelling the time as a linear change in time 
+#Power when modelling time trends using a linear function
 
 PowerLinearTimeTrend <- function(n1, n2, lambda1, lambda2, M, mfut, alpha, label1, label2, probdropout, StartofRecruitment, EndofRecruitment, HistoricalTrial,
                                  mfutHist, TimeBetweenTrials) { 
   
-  N <- rep(NA, M) #Creating a vector in which we can store indicator variable of whether or not the null hypothesis was rejected for each 
-  #simulated trial
+  N <- rep(NA, M) #Create a vector in which we can store indicator variable of whether or not the null hypothesis was rejected for each simulated trial is stored
   
   for (i in 1:M) {
     
     #Simulate current data set 
     CurrentTrial <- CompleteTrialSimulation(n1, lambda1, mfut, label1, n2, lambda2, label2, StartofRecruitment, EndofRecruitment, probdropout)
     
-    HistoricalControlData <- HistoricalTrial[which(HistoricalTrial$Arm == 1), ] #Extract the treatment data from historical data set
-    #This is because treatment in historical trial = control in current trial
+    HistoricalControlData <- HistoricalTrial[which(HistoricalTrial$Arm == 1), ] #Extract the treatment data from historical data set as:
+                                                                                #treatment in historical trial = control in current trial = historical control data
     
-    Current <- rep(1,nrow(CurrentTrial))
-    Historical <- rep(0, nrow(HistoricalControlData))
+    
+    Current <- rep(1,nrow(CurrentTrial)) #Generate vector of 1s to act as a label for current data
+    Historical <- rep(0, nrow(HistoricalControlData)) #Generate vector of 0s to act as a label for historical data
     
     CurrentTrial2 <- as.data.frame(cbind(CurrentTrial, HistOrCurrent = Current)) #Assign a value of 1 to current data
     HistoricalControlData2 <-as.data.frame(cbind(HistoricalControlData, HistOrCurrent = Historical)) #Assign a value of 0 to historical data
     
     CombinedFinalTrialData <- rbind(CurrentTrial2, HistoricalControlData2) #Add historical data into data set for analysis
     
-    RecruitmentFromBaseline <- rep(NA, n1+n2+nrow(HistoricalControlData2)) #Create vector to store recruitmentfrombaseline/create the variable
+    #Make variable to used as a linear time trend
+    
+    RecruitmentFromBaseline <- rep(NA, n1+n2+nrow(HistoricalControlData2)) #Create vector to store recruitmentfrombaseline times
     
     for(j in 1:nrow(CombinedFinalTrialData)){
       
       if(CombinedFinalTrialData[j, ]$HistOrCurrent == 0){ #If the observation is historical 
         
-        RecruitmentFromBaseline[j] = CombinedFinalTrialData[j, ]$recruitmenttime#Baseline recruitment is just the recruitment time. 
+        RecruitmentFromBaseline[j] = CombinedFinalTrialData[j, ]$recruitmenttime  #Baseline recruitment is the recruitment time. 
       }
-      else{ #When the observation is current
-        RecruitmentFromBaseline[j] = CombinedFinalTrialData[j, ]$recruitmenttime + mfutHist + TimeBetweenTrials #Baseline recruitment is recruitment time 
-        #of current trial, plus time it has been since the start of the historical trial. 
+      else{ 
+      #When the observation is current, baseline recruitment is recruitment time of current trial, in addition to the time since the start of the historical trial.
+        RecruitmentFromBaseline[j] = CombinedFinalTrialData[j, ]$recruitmenttime + mfutHist + TimeBetweenTrials  
       }
     }
     
-    CombinedFinalTrialData2 <- cbind(CombinedFinalTrialData, RecruitmentFromBaseline)  #Add baseline recruitment time as a variable in the data set
+    CombinedFinalTrialData2 <- cbind(CombinedFinalTrialData, RecruitmentFromBaseline)  #Add baseline recruitment time to the data set
     
-    #Fit model dependent on arm and baseline recruitment time, which represents linear time
+    #Use survival object to fit a cox proportional hazards model, using the covariates of: the arm of the trial and the baseline recruitment time (which acts as 
+    linear time between the start of the historical trial and the end of current trial recruitment) 
+    
     ModelLinear <- coxph(Surv(ActualEventTime, status) ~ Arm + RecruitmentFromBaseline, data = CombinedFinalTrialData2) 
     
-    if (summary(ModelLinear)$coefficients[1,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if wasn't
+    if (summary(ModelLinear)$coefficients[1,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if it was not
       N[i] <- 1
     } else {
       N[i] <- 0 
     }
   }
-  return(sum(N)/M) #Number of trials that rejected the null/total trials = power. 
+  return(sum(N)/M) #return proportion of trials that rejected the null hypothesis, out of those simulated. 
 }
 
 
 
-#Power when modelling the time as both linear and a step change 
-
+#Power when modelling the time trend using both a linear and step function
 
 
 PowerStepLinearTimeTrend <- function(n1, n2, lambda1, lambda2, M, mfut, alpha, label1, label2, probdropout, StartofRecruitment, EndofRecruitment, HistoricalTrial,
                                      mfutHist, TimeBetweenTrials) { 
   
-  N <- rep(NA, M) #Creating a vector in which we can store indicator variable of whether or not the null hypothesis was rejected for each 
-  #simulated trial
+  N <- rep(NA, M) #Create a vector in which an indicator variable of whether or not the null hypothesis was rejected for each simulated trial is stored.
   
   for (i in 1:M) {
     
@@ -338,48 +337,59 @@ PowerStepLinearTimeTrend <- function(n1, n2, lambda1, lambda2, M, mfut, alpha, l
     
     CurrentTrial <- CompleteTrialSimulation(n1, lambda1, mfut, label1, n2, lambda2, label2, StartofRecruitment, EndofRecruitment, probdropout)
     
-    HistoricalControlData <- HistoricalTrial[which(HistoricalTrial$Arm == 1), ] #Extract the treatment data from historical trial 
-    #This is because treatment in historical trial = control in current trial
+    HistoricalControlData <- HistoricalTrial[which(HistoricalTrial$Arm == 1), ] #Extract the treatment data from historical trial as:
+                                                                                ##treatment in historical trial = control in current trial = historical control data
     
-    Current <- rep(1,nrow(CurrentTrial))
-    Historical <- rep(0, nrow(HistoricalControlData))
+    Current <- rep(1,nrow(CurrentTrial)) #Generate vector of 1s to act as a label for current data
+    Historical <- rep(0, nrow(HistoricalControlData)) #Generate vector of 0s to act as a label for historical data
     
     CurrentTrial2 <- as.data.frame(cbind(CurrentTrial, HistOrCurrent = Current)) #Assign a value of 1 to all current observations
     HistoricalControlData2 <-as.data.frame(cbind(HistoricalControlData, HistOrCurrent = Historical)) #Assign a value of 0 to historical observations
     
     CombinedFinalTrialData <- rbind(CurrentTrial2, HistoricalControlData2) #Add historical data into data set for analysis
     
-    RecruitmentFromBaseline <- rep(NA, n1+n2+nrow(HistoricalControlData2))
+    #Make variable to used as a linear time trend
+    
+    RecruitmentFromBaseline <- rep(NA, n1+n2+nrow(HistoricalControlData2)) #Create vector to store recruitmentfrombaseline times
     
     for(j in 1:nrow(CombinedFinalTrialData)){
       
-      if(CombinedFinalTrialData[j, ]$HistOrCurrent == 0){ #When data is historical
+      if(CombinedFinalTrialData[j, ]$HistOrCurrent == 0){ #If the observation is historical 
         
-        RecruitmentFromBaseline[j] = CombinedFinalTrialData[j, ]$recruitmenttime #baseline recruitment is just recruitment time
+        RecruitmentFromBaseline[j] = CombinedFinalTrialData[j, ]$recruitmenttime #Baseline recruitment is the recruitment time.
       }
-      else{ #When data is current
-        RecruitmentFromBaseline[j] = CombinedFinalTrialData[j, ]$recruitmenttime + mfutHist + TimeBetweenTrials #Baseline recruitment is recruitment time 
-        #of current trial, plus time it has been since the start of the historical trial
+      else{ 
+      #When the observation is current, baseline recruitment is recruitment time of current trial, in addition to the time since the start of the historical trial.
+        RecruitmentFromBaseline[j] = CombinedFinalTrialData[j, ]$recruitmenttime + mfutHist + TimeBetweenTrials 
       }
     }
     
-    CombinedFinalTrialData2 <- cbind(CombinedFinalTrialData, RecruitmentFromBaseline)
+    CombinedFinalTrialData2 <- cbind(CombinedFinalTrialData, RecruitmentFromBaseline) #Add baseline recruitment time to the data set
     
-    #Fit model dependent on arm, steo time and linear time
+    #Use survival object to fit a cox proportional hazards model, using the covariates of: the arm of the trial, the baseline recruitment time (which acts as 
+    linear time between the start of the historical trial and the end of current trial recruitment) and whether or not the data is historical or current (which 
+    #is binary and therefore is a step function with a step between 0 (historical) and 1(current))
+    
     ModelStepLinear <- coxph(Surv(ActualEventTime, status) ~ Arm + RecruitmentFromBaseline + HistOrCurrent , data = CombinedFinalTrialData2) 
     
     
-    if (summary(ModelStepLinear)$coefficients[1,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if wasn't
+    if (summary(ModelStepLinear)$coefficients[1,5] < alpha) { #Assign a value of 1 to the vector N if the null hypothesis was rejected, and zero if it was not
       N[i] <- 1
     } else {
       N[i] <- 0 
     }
   }
-  return(sum(N)/M) #Number of trials that rejected the null/total trials = power. 
+  return(sum(N)/M) #return proportion of trials that rejected the null hypothesis, out of those simulated. 
 }
 
 
-#Main Data analysis without variations:
+
+
+
+
+
+
+#Main Data analysis:
 
 #Generate a Historical Trial 
 
@@ -402,7 +412,8 @@ HistoricalTrialMyeloma <- CompleteTrialSimulation(100, 0.03500743, 72, 0, 100, 0
 #Let us check that the historical data set is powered in its own right
 set.seed(1234)
 PowerHistTrialMyeloma <- PowerSeparateAnalysis(100, 100, 0.03500743, 0.02100446, 1000, 72, 0.05, 1, 2, 0.05, 0, 36) #0.873
-
+MCVarianceSeparateHistMyeloma <-(PowerHistTrialMyeloma*(1 - PowerHistTrialMyeloma))/1000
+MCSDSeparateHistMyeloma <- sqrt(MCVarianceSeparateHistMyeloma)
 #So yes the trial we use is powered on its own. 
 
 
@@ -410,6 +421,8 @@ PowerHistTrialMyeloma <- PowerSeparateAnalysis(100, 100, 0.03500743, 0.02100446,
 
 set.seed(1234)
 SeparatePowerHistMyeloma <- PowerSeparateAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48) #0.8 
+MCVarianceSeparateMyeloma <-(SeparatePowerHistMyeloma*(1 - SeparatePowerHistMyeloma))/1000
+MCSDSeparateMyeloma <- sqrt(MCVarianceSeparateMyeloma)
 #So without incorpoating any historical data, using a cox proportional hazards model to test for this hazard ratio gives us a power of 0.8
 
 
@@ -418,6 +431,9 @@ SeparatePowerHistMyeloma <- PowerSeparateAnalysis(394, 394, 0.02100446, 0.016503
 #Pooled Analysis
 set.seed(1234)
 PooledPowerHistMyeloma <- PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrialMyeloma, 0.05, 0, 48) #0.84
+MCVariancePooledMyeloma <-(PooledPowerHistMyeloma*(1 - PooledPowerHistMyeloma))/1000
+MCSDPooledMyeloma <- sqrt(MCVariancePooledMyeloma)
+
 
 #This increases the power, which is to be expected since we're essentially just using more data from a data set with the same underlying parameter 
 #And it is therefore just like we have a higher sample size, which would mean a higher power. 
@@ -426,18 +442,24 @@ PooledPowerHistMyeloma <- PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1
 #Modelling time trend as a step 
 set.seed(1234)
 PowerStepHistMyeloma <- PowerStepTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma) #0.801
+MCVarianceStepMyeloma <-(PowerStepHistMyeloma*(1 - PowerStepHistMyeloma))/1000
+MCSDStepMyeloma <- sqrt(MCVarianceStepMyeloma)
 #Doesn't seem to have made much change. Ever so slight increase in power. 
 
 
 #Modelling time trend as linear
 set.seed(1234)
 PowerLinearHistMyeloma <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 70, 60) #0.821
+MCVarianceLinearMyeloma <-(PowerLinearHistMyeloma*(1 - PowerLinearHistMyeloma))/1000
+MCSDLinearMyeloma <- sqrt(MCVarianceLinearMyeloma)
 #We see an increase in power
 
 
 #Modelling time trend as linear and step
 set.seed(1234)
 PowerStepLinearHistMyeloma <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 70, 60) #0.804
+MCVarianceStepLinearMyeloma <-(PowerStepLinearHistMyeloma*(1 - PowerStepLinearHistMyeloma))/1000
+MCSDStepLinearMyeloma <- sqrt(MCVarianceStepLinearMyeloma)
 #We see no change in power. 
 
 
@@ -445,20 +467,31 @@ PowerStepLinearHistMyeloma <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0
 
 set.seed(1234)
 Type1ErrorSeparateMyeloma <- PowerSeparateAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48) #0.057
+MCVarianceType1SeparateMyeloma <-(Type1ErrorSeparateMyeloma*(1 - Type1ErrorSeparateMyeloma))/1000
+MCSDType1SeparateMyeloma <- sqrt(MCVarianceType1SeparateMyeloma)
+
 
 set.seed(1234)
 Type1ErrorPooledMyeloma <- PowerPooledAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrialMyeloma, 0.05, 0, 48) #0.05
+MCVarianceType1PooledMyeloma <-(Type1ErrorPooledMyeloma*(1 - Type1ErrorPooledMyeloma))/1000
+MCSDType1PooledMyeloma <- sqrt(MCVarianceType1PooledMyeloma)
+
 
 set.seed(1234)
 Type1ErrorTimeTrendMyeloma <- PowerStepTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma) #0.057
+MCVarianceType1StepMyeloma <-(Type1ErrorTimeTrendMyeloma*(1 - Type1ErrorTimeTrendMyeloma))/1000
+MCSDType1StepMyeloma <- sqrt(MCVarianceType1StepMyeloma)
 
 set.seed(1234)
 Type1ErrorLinearTrendMyeloma <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 60) #0.056
+MCVarianceType1LinearMyeloma <-(Type1ErrorLinearTrendMyeloma*(1 - Type1ErrorLinearTrendMyeloma))/1000
+MCSDType1LinearMyeloma <- sqrt(MCVarianceType1LinearMyeloma)
+
 
 set.seed(1234)
 Type1ErrorStepLinearTrendMyeloma <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 60) #0.054
-
-
+MCVarianceType1StepLinearMyeloma <-(Type1ErrorStepLinearTrendMyeloma*(1 - Type1ErrorStepLinearTrendMyeloma))/1000
+MCSDType1StepLinearMyeloma <- sqrt(MCVarianceType1StepLinearMyeloma)
 
 
 
@@ -468,8 +501,10 @@ Methods <- c("Separate", "Pooling", "Step Time Trend", "Linear Time Trend", "Ste
 MainAnalysisPowers <- c(SeparatePowerHistMyeloma, PooledPowerHistMyeloma, PowerStepHistMyeloma, PowerLinearHistMyeloma, PowerStepLinearHistMyeloma)
 MainAnalysisType1Errors <- c(Type1ErrorSeparateMyeloma, Type1ErrorPooledMyeloma,Type1ErrorTimeTrendMyeloma, Type1ErrorLinearTrendMyeloma, Type1ErrorStepLinearTrendMyeloma)
 
-MainAnalysisData <- as.data.frame(cbind(Methods, MainAnalysisPowers, MainAnalysisType1Errors))
-MainAnalysisData
+MainAnalysisPowersMCE <- c(MCSDSeparateMyeloma, MCSDPooledMyeloma, MCSDStepMyeloma,MCSDLinearMyeloma, MCSDStepLinearMyeloma)
+MainAnalysisType1ErrorsMCE <- c(MCSDType1SeparateMyeloma,MCSDType1PooledMyeloma, MCSDType1StepMyeloma, MCSDType1LinearMyeloma, MCSDType1StepLinearMyeloma)
+
+MainAnalysisData <- as.data.frame(cbind(Methods, MainAnalysisPowers, MainAnalysisType1Errors, MainAnalysisPowersMCE, MainAnalysisType1ErrorsMCE))
 
 #Graph
 
@@ -487,7 +522,6 @@ legend(x= "topright", legend= "SeparateAnalysis", lty = 1, col="blue")
 
 
 
-
 #Plotting the Type 1 Errors
 
 plot(MainAnalysisType1Errors, data = MainAnalysisData, xlab = "Method of Historical Borrowing", ylab = "Power", 
@@ -497,6 +531,15 @@ axis(1, at = 1:nrow(MainAnalysisData), labels = Methods)
 abline(h = Type1ErrorSeparateMyeloma, col = "blue")
 
 legend(x= "bottomright", legend= "SeparateAnalysis", lty = 1, col="blue")
+
+
+
+
+
+
+
+#Sensitivity Analysis
+
 
 
 #Now, since all of those powers calculated are conditional on the historical data set, we should make some changes to the historical data set 
