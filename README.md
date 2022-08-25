@@ -389,126 +389,134 @@ PowerStepLinearTimeTrend <- function(n1, n2, lambda1, lambda2, M, mfut, alpha, l
 
 
 
-#Main Data analysis:
+# - MAIN DATA ANALYSIS - To be considered alongside Section 6.6.1
 
-#Generate a Historical Trial 
+#Simulate the Historical Trial  
 
-#Since the current trial has a control lambda of 0.02100446, we want to test what happens to 
-#The power when historical lambda for the same treatment is the same, lower and higher. 
-
-#So the normal historical data set we have generated as:
 set.seed(1234)
 HistoricalTrialMyeloma <- CompleteTrialSimulation(100, 0.03500743, 72, 0, 100, 0.02100446, 1, 0, 36, 0.05)
 
-#100 in each group because this ensures at least 80% power for all variations of lambda2 that we will try.
-#It also just seems like that of a reasonably sized trial. 
-#lambda2 = 0.02100446, same as Myeloma Trial
-#So this represents what will happen under ideal circumstances. 
-#Look for hazard ratio of 0.6, so this makes lambda1 = 0.03500743
-#Make the historical trial about 35% of the length of Myeloma, which makes 72 months total, 36 of which are for accrual period. 
-#Same drop out rate. 
-#We're assuming that the historical trial took place 5 years before, which is important for the last 2 functions. 
-
-#Let us check that the historical data set is powered in its own right
+#Check that the historical data trial is powered to at least 80%
 set.seed(1234)
 PowerHistTrialMyeloma <- PowerSeparateAnalysis(100, 100, 0.03500743, 0.02100446, 1000, 72, 0.05, 1, 2, 0.05, 0, 36) #0.873
+
+#Calculate the Monte Carlo Error estimate of this power
 MCVarianceSeparateHistMyeloma <-(PowerHistTrialMyeloma*(1 - PowerHistTrialMyeloma))/1000
-MCSDSeparateHistMyeloma <- sqrt(MCVarianceSeparateHistMyeloma)
-#So yes the trial we use is powered on its own. 
+MCSDSeparateHistMyeloma <- sqrt(MCVarianceSeparateHistMyeloma) #0.01052953
 
 
 #Separate Analysis of current data set 
-
 set.seed(1234)
 SeparatePowerHistMyeloma <- PowerSeparateAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48) #0.8 
+
+#Calculate the Monte Carlo Error estimate of this power
 MCVarianceSeparateMyeloma <-(SeparatePowerHistMyeloma*(1 - SeparatePowerHistMyeloma))/1000
-MCSDSeparateMyeloma <- sqrt(MCVarianceSeparateMyeloma)
-#So without incorpoating any historical data, using a cox proportional hazards model to test for this hazard ratio gives us a power of 0.8
+MCSDSeparateMyeloma <- sqrt(MCVarianceSeparateMyeloma) #0.01264911
 
 
-#Now we see what it does when we incorporate some of the historical data in various ways
+
+#Use methods of historical borrowing incorporate HistoricalTrialMyeloma into the analysis of the current trial
 
 #Pooled Analysis
 set.seed(1234)
 PooledPowerHistMyeloma <- PowerPooledAnalysis(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrialMyeloma, 0.05, 0, 48) #0.84
+
+#Calculate the estimated Monte Carlo Error of this power
 MCVariancePooledMyeloma <-(PooledPowerHistMyeloma*(1 - PooledPowerHistMyeloma))/1000
-MCSDPooledMyeloma <- sqrt(MCVariancePooledMyeloma)
+MCSDPooledMyeloma <- sqrt(MCVariancePooledMyeloma) #0.0115931
 
 
-#This increases the power, which is to be expected since we're essentially just using more data from a data set with the same underlying parameter 
-#And it is therefore just like we have a higher sample size, which would mean a higher power. 
-
-
-#Modelling time trend as a step 
+#Modelling time trend using a step function
 set.seed(1234)
 PowerStepHistMyeloma <- PowerStepTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma) #0.801
+
+#Calculate the estimated Monte Carlo Error of this power
 MCVarianceStepMyeloma <-(PowerStepHistMyeloma*(1 - PowerStepHistMyeloma))/1000
-MCSDStepMyeloma <- sqrt(MCVarianceStepMyeloma)
-#Doesn't seem to have made much change. Ever so slight increase in power. 
+MCSDStepMyeloma <- sqrt(MCVarianceStepMyeloma) #0.01262533
 
 
-#Modelling time trend as linear
+
+#Modelling time trend using a linear function
 set.seed(1234)
 PowerLinearHistMyeloma <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 70, 60) #0.821
+
+#Calculate the estimated Monte Carlo Error of this power
 MCVarianceLinearMyeloma <-(PowerLinearHistMyeloma*(1 - PowerLinearHistMyeloma))/1000
-MCSDLinearMyeloma <- sqrt(MCVarianceLinearMyeloma)
-#We see an increase in power
+MCSDLinearMyeloma <- sqrt(MCVarianceLinearMyeloma) #0.01212266
 
 
-#Modelling time trend as linear and step
+
+#Modelling time trend using a linear and step function
 set.seed(1234)
 PowerStepLinearHistMyeloma <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 70, 60) #0.804
+
+#Calculate the estimated Monte Carlo Error of this power
 MCVarianceStepLinearMyeloma <-(PowerStepLinearHistMyeloma*(1 - PowerStepLinearHistMyeloma))/1000
-MCSDStepLinearMyeloma <- sqrt(MCVarianceStepLinearMyeloma)
-#We see no change in power. 
+MCSDStepLinearMyeloma <- sqrt(MCVarianceStepLinearMyeloma) #0.01255325
 
 
 #Type 1 Errors
 
+#Seperate Analysis of current trial
 set.seed(1234)
 Type1ErrorSeparateMyeloma <- PowerSeparateAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48) #0.057
+
+#Calculate the estimated Monte Carlo Error of this power
 MCVarianceType1SeparateMyeloma <-(Type1ErrorSeparateMyeloma*(1 - Type1ErrorSeparateMyeloma))/1000
-MCSDType1SeparateMyeloma <- sqrt(MCVarianceType1SeparateMyeloma)
+MCSDType1SeparateMyeloma <- sqrt(MCVarianceType1SeparateMyeloma) #0.007331507
 
-
+#Pooled Analysis 
 set.seed(1234)
 Type1ErrorPooledMyeloma <- PowerPooledAnalysis(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, HistoricalTrial = HistoricalTrialMyeloma, 0.05, 0, 48) #0.05
+
+#Calculate the estimated Monte Carlo Error of this power
 MCVarianceType1PooledMyeloma <-(Type1ErrorPooledMyeloma*(1 - Type1ErrorPooledMyeloma))/1000
-MCSDType1PooledMyeloma <- sqrt(MCVarianceType1PooledMyeloma)
+MCSDType1PooledMyeloma <- sqrt(MCVarianceType1PooledMyeloma) #0.006892024
 
-
+#Modelling time trends using a step function
 set.seed(1234)
 Type1ErrorTimeTrendMyeloma <- PowerStepTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma) #0.057
-MCVarianceType1StepMyeloma <-(Type1ErrorTimeTrendMyeloma*(1 - Type1ErrorTimeTrendMyeloma))/1000
-MCSDType1StepMyeloma <- sqrt(MCVarianceType1StepMyeloma)
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1StepMyeloma <-(Type1ErrorTimeTrendMyeloma*(1 - Type1ErrorTimeTrendMyeloma))/1000
+MCSDType1StepMyeloma <- sqrt(MCVarianceType1StepMyeloma) #0.007331507
+
+#Modelling time trends using a linear function
 set.seed(1234)
 Type1ErrorLinearTrendMyeloma <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 60) #0.056
+
+#Calculate the estimated Monte Carlo Error of this power
 MCVarianceType1LinearMyeloma <-(Type1ErrorLinearTrendMyeloma*(1 - Type1ErrorLinearTrendMyeloma))/1000
-MCSDType1LinearMyeloma <- sqrt(MCVarianceType1LinearMyeloma)
+MCSDType1LinearMyeloma <- sqrt(MCVarianceType1LinearMyeloma) #0.007270763
 
-
+#Modelling time trends using a step and linear function
 set.seed(1234)
 Type1ErrorStepLinearTrendMyeloma <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 60) #0.054
+
+#Calculate the estimated Monte Carlo Error of this power
 MCVarianceType1StepLinearMyeloma <-(Type1ErrorStepLinearTrendMyeloma*(1 - Type1ErrorStepLinearTrendMyeloma))/1000
-MCSDType1StepLinearMyeloma <- sqrt(MCVarianceType1StepLinearMyeloma)
+MCSDType1StepLinearMyeloma <- sqrt(MCVarianceType1StepLinearMyeloma) #0.007147307
 
 
 
 #Summary
 
-Methods <- c("Separate", "Pooling", "Step Time Trend", "Linear Time Trend", "Step Linear Time Trend")
+Methods <- c("Separate", "Pooling", "Step Time", "Linear Time", "Step Linear Time")
+
 MainAnalysisPowers <- c(SeparatePowerHistMyeloma, PooledPowerHistMyeloma, PowerStepHistMyeloma, PowerLinearHistMyeloma, PowerStepLinearHistMyeloma)
+
 MainAnalysisType1Errors <- c(Type1ErrorSeparateMyeloma, Type1ErrorPooledMyeloma,Type1ErrorTimeTrendMyeloma, Type1ErrorLinearTrendMyeloma, Type1ErrorStepLinearTrendMyeloma)
 
 MainAnalysisPowersMCE <- c(MCSDSeparateMyeloma, MCSDPooledMyeloma, MCSDStepMyeloma,MCSDLinearMyeloma, MCSDStepLinearMyeloma)
+
 MainAnalysisType1ErrorsMCE <- c(MCSDType1SeparateMyeloma,MCSDType1PooledMyeloma, MCSDType1StepMyeloma, MCSDType1LinearMyeloma, MCSDType1StepLinearMyeloma)
 
 MainAnalysisData <- as.data.frame(cbind(Methods, MainAnalysisPowers, MainAnalysisType1Errors, MainAnalysisPowersMCE, MainAnalysisType1ErrorsMCE))
 
-#Graph
+#Plotting the power and type 1 Error
 
-par(mfrow = c(1,1))
+#Powers
+par(mfrow = c(1,2))
 
 plot(MainAnalysisPowers, data = MainAnalysisData, xlab = "Method of Historical Borrowing", ylab = "Power", Main = "Graph Showing Change in Power for Methods of Borrowing the HistoricalTrialMyeloma Data Set", 
      type = "b", xaxt='n', main = "Change in Power when Borrowing A Historical 
@@ -516,21 +524,14 @@ plot(MainAnalysisPowers, data = MainAnalysisData, xlab = "Method of Historical B
      Using Different Methods")
 axis(1, at = 1:nrow(MainAnalysisData), labels = Methods)
 
-abline(h = SeparatePowerHistMyeloma, col = "blue")
 
-legend(x= "topright", legend= "SeparateAnalysis", lty = 1, col="blue")
-
-
-
-#Plotting the Type 1 Errors
-
-plot(MainAnalysisType1Errors, data = MainAnalysisData, xlab = "Method of Historical Borrowing", ylab = "Power", 
-     type = "b", xaxt='n', main = "Change in Type 1 Error when Borrowing A Historical Data Set with The Same Underlying Parameter Using Different Methods")
+#Type 1 Errors
+plot(MainAnalysisType1Errors, data = MainAnalysisData, xlab = "Method of Historical Borrowing", ylab = "Type 1 Error", 
+     type = "b", xaxt='n', main = "Change in Type 1 Error when Borrowing 
+     A Historical Data Set with The Same 
+     Underlying Parameter Using Different Methods")
 axis(1, at = 1:nrow(MainAnalysisData), labels = Methods)
 
-abline(h = Type1ErrorSeparateMyeloma, col = "blue")
-
-legend(x= "bottomright", legend= "SeparateAnalysis", lty = 1, col="blue")
 
 
 
@@ -538,7 +539,16 @@ legend(x= "bottomright", legend= "SeparateAnalysis", lty = 1, col="blue")
 
 
 
-#Sensitivity Analysis
+
+
+
+
+
+
+
+
+
+# - MAIN DATA ANALYSIS - To be considered alongside Section 6.6.2
 
 
 
