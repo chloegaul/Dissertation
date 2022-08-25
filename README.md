@@ -1209,38 +1209,89 @@ legend(0.018, 0.0593, legend=c("Pooled", "Step Time", "Linear Time", "Step and L
 
 #Model time trends using a linear function
 
+#1 Year
 set.seed(1234)
 PowerLinear1Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 12) #0.824
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceLinear1year <-(PowerLinear1Year*(1 - PowerLinear1Year))/1000
+MCSDLinear1year <- sqrt(MCVarianceLinear1year) #0.01204259
+
+#2 Years
 set.seed(1234)
 PowerLinear2Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 24) #0.821
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceLinear2year <-(PowerLinear2Year*(1 - PowerLinear2Year))/1000
+MCSDLinear2year <- sqrt(MCVarianceLinear2year) #0.01212266
+
+#3 Years
 set.seed(1234)
 PowerLinear3Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 36) #0.82
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceLinear3year <-(PowerLinear3Year*(1 - PowerLinear3Year))/1000
+MCSDLinear3year <- sqrt(MCVarianceLinear3year) #0.01214907
+
+#4 Years
 set.seed(1234)
 PowerLinear4Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 48) #0.82
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceLinear4year <-(PowerLinear4Year*(1 - PowerLinear4Year))/1000
+MCSDLinear4year <- sqrt(MCVarianceLinear4year) #0.01214907
+
+#6 Years
 set.seed(1234)
 PowerLinear6Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 72) #0.82
+
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceLinear6year <-(PowerLinear6Year*(1 - PowerLinear6Year))/1000
+MCSDLinear6year <- sqrt(MCVarianceLinear6year) #0.01214907
+
 
 
 #Model time trends using a step and linear function
 
+#1 Year
 set.seed(1234)
 PowerStepLinear1Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 12) #0.804
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceStepLinear1year <-(PowerStepLinear1Year*(1 - PowerStepLinear1Year))/1000
+MCSDStepLinear1year <- sqrt(MCVarianceStepLinear1year) #0.01255325
+
+#2 Years
 set.seed(1234)
 PowerStepLinear2Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 24) #0.804
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceStepLinear2year <-(PowerStepLinear2Year*(1 - PowerStepLinear2Year))/1000
+MCSDStepLinear2year <- sqrt(MCVarianceStepLinear2year) #0.01255325
+
+#3 Years
 set.seed(1234)
 PowerStepLinear3Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 36) #0.804
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceStepLinear3year <-(PowerStepLinear3Year*(1 - PowerStepLinear3Year))/1000
+MCSDStepLinear3year <- sqrt(MCVarianceStepLinear3year) #0.01255325
+
+#4 Years
 set.seed(1234)
 PowerStepLinear4Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 48) #0.804
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceStepLinear4year <-(PowerStepLinear4Year*(1 - PowerStepLinear4Year))/1000
+MCSDStepLinear4year <- sqrt(MCVarianceStepLinear4year) #0.01255325
+
+#6 Years
 set.seed(1234)
 PowerStepLinear6Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.0165035, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 72) #0.804
+
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceStepLinear6year <-(PowerStepLinear6Year*(1 - PowerStepLinear6Year))/1000
+MCSDStepLinear6year <- sqrt(MCVarianceStepLinear6year) #0.01255325
 
 
 #Summary
@@ -1253,7 +1304,7 @@ StepLinearPowersYears <- c(PowerStepLinear1Year, PowerStepLinear2Year, PowerStep
 
 par(mfrow = c(1,2))
 
-#Put this on a Graph itself 
+#Linear
 
 plot(Years, LinearPowersYears, type = "b", xlab = "Years Between Historical and Current Trial", ylab = "Power", main = "Plot of Power of the Current Trial When Borrowing
    Historical Data Occuring Various Years Ago, 
@@ -1262,7 +1313,7 @@ plot(Years, LinearPowersYears, type = "b", xlab = "Years Between Historical and 
 abline(v = 5, lty = "dotted", col = "purple")
 abline(h = PowerLinearHistMyeloma, lty = "dotted", col = "purple")
 
-#Do a graph of this
+#Step Linear
 
 plot(Years, StepLinearPowersYears, type = "b", xlab = "Years Between Historical and Current Trial", ylab = "Power", main = "Plot of Power of the Current Trial When Borrowing
      Historical Data Occuring Various Years Ago, 
@@ -1273,31 +1324,108 @@ abline(h = PowerStepLinearHistMyeloma, lty = "dotted", col = "purple")
 
 
 
-#And we also need to take into account the Type 1 Error
+##TYPE 1 ERROR - Sensitivity Analysis - Change in time between trials 
 
-#Linear 
+#Modeling time trends using a Linear 
 
+#1 Year
 set.seed(1234)
 Type1ErrorLinearTimeTrend1Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 12) #0.059
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1Linear1year <-(Type1ErrorLinearTimeTrend1Year*(1 - Type1ErrorLinearTimeTrend1Year))/1000
+MCSDType1Linear1year <- sqrt(MCVarianceType1Linear1year) #0.007451107
+
+#2 Years
 set.seed(1234)
 Type1ErrorLinearTimeTrend2Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 24) #0.058
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1Linear2year <-(Type1ErrorLinearTimeTrend2Year*(1 - Type1ErrorLinearTimeTrend2Year))/1000
+MCSDType1Linear2year <- sqrt(MCVarianceType1Linear2year) #0.007391617
+
+#3 Years
 set.seed(1234)
 Type1ErrorLinearTimeTrend3Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 36) #0.059
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1Linear3year <-(Type1ErrorLinearTimeTrend3Year*(1 - Type1ErrorLinearTimeTrend3Year))/1000
+MCSDType1Linear3year <- sqrt(MCVarianceType1Linear3year) #0.007451107
+
+#4 Years
 set.seed(1234)
 Type1ErrorLinearTimeTrend4Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 48) #0.059
 
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1Linear4year <-(Type1ErrorLinearTimeTrend4Year*(1 - Type1ErrorLinearTimeTrend4Year))/1000
+MCSDType1Linear4year <- sqrt(MCVarianceType1Linear4year) #0.007451107
+
+#6 Years
 set.seed(1234)
 Type1ErrorLinearTimeTrend6Year <- PowerLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 72) #0.057
+
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1Linear6year <-(Type1ErrorLinearTimeTrend6Year*(1 - Type1ErrorLinearTimeTrend6Year))/1000
+MCSDType1Linear6year <- sqrt(MCVarianceType1Linear6year) #0.007331507
+
+
+
+#Modelling time trends using a step and linear function
+
+#1 Year
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend1Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 12) #0.054
+
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1StepLinear1year <-(Type1ErrorStepLinearTimeTrend1Year*(1 - Type1ErrorStepLinearTimeTrend1Year))/1000
+MCSDType1StepLinear1year <- sqrt(MCVarianceType1StepLinear1year) #0.007147307
+
+#2 Years
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend2Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 24) #0.054
+
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1StepLinear2year <-(Type1ErrorStepLinearTimeTrend2Year*(1 - Type1ErrorStepLinearTimeTrend2Year))/1000
+MCSDType1StepLinear2year <- sqrt(MCVarianceType1StepLinear2year) #0.007147307
+
+#3 Years
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend3Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 36) #0.054
+
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1StepLinear3year <-(Type1ErrorStepLinearTimeTrend3Year*(1 - Type1ErrorStepLinearTimeTrend3Year))/1000
+MCSDType1StepLinear3year <- sqrt(MCVarianceType1StepLinear3year) #0.007147307
+
+#4 Years
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend4Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 48) #0.054
+
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1StepLinear4year <-(Type1ErrorStepLinearTimeTrend4Year*(1 - Type1ErrorStepLinearTimeTrend4Year))/1000
+MCSDType1StepLinear4year <- sqrt(MCVarianceType1StepLinear4year) #0.007147307
+
+#6 Years
+set.seed(1234)
+Type1ErrorStepLinearTimeTrend6Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 72) #0.054
+
+#Calculate the estimated Monte Carlo Error of this power
+MCVarianceType1StepLinear6year <-(Type1ErrorStepLinearTimeTrend6Year*(1 - Type1ErrorStepLinearTimeTrend6Year))/1000
+MCSDType1StepLinear6year <- sqrt(MCVarianceType1StepLinear6year) # 0.007147307
+
+
+
+#Summary
+
+Years <- c(1, 2, 3, 4, 5, 6)
+LinearType1ErrorsYears <- c(Type1ErrorLinearTimeTrend1Year, Type1ErrorLinearTimeTrend2Year, Type1ErrorLinearTimeTrend3Year, Type1ErrorLinearTimeTrend4Year, TypeIErrorLinearTrendMyeloma, Type1ErrorLinearTimeTrend6Year)
+StepLinearType1ErrorsYears <- c(Type1ErrorStepLinearTimeTrend1Year, Type1ErrorStepLinearTimeTrend2Year, Type1ErrorStepLinearTimeTrend3Year, Type1ErrorStepLinearTimeTrend4Year, TypeIErrorStepLinearTrendMyeloma,
+                                Type1ErrorStepLinearTimeTrend6Year)
 
 #Graph the Type 1 Errors
 
 par(mfrow = c(1,2))
 
-Years <- c(1, 2, 3, 4, 5, 6)
-LinearType1ErrorsYears <- c(Type1ErrorLinearTimeTrend1Year, Type1ErrorLinearTimeTrend2Year, Type1ErrorLinearTimeTrend3Year, Type1ErrorLinearTimeTrend4Year, TypeIErrorLinearTrendMyeloma, Type1ErrorLinearTimeTrend6Year)
+#Linear 
 
 plot(Years, LinearType1ErrorsYears, type = "b", xlab = "Years Between Historical and Current Trial", ylab = "Type 1 Error", main = "Plot of Type 1 Error of the Current Trial When Borrowing
      Historical Data Occuring Various Years Ago, 
@@ -1306,29 +1434,7 @@ plot(Years, LinearType1ErrorsYears, type = "b", xlab = "Years Between Historical
 abline(v = 5, lty = "dotted", col = "purple")
 abline(h = TypeIErrorLinearTrendMyeloma, lty = "dotted", col = "purple")
 
-#Step and Linear 
-
-
-set.seed(1234)
-Type1ErrorStepLinearTimeTrend1Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 12) #0.054
-
-set.seed(1234)
-Type1ErrorStepLinearTimeTrend2Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 24) #0.054
-
-set.seed(1234)
-Type1ErrorStepLinearTimeTrend3Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 36) #0.054
-
-set.seed(1234)
-Type1ErrorStepLinearTimeTrend4Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 48) #0.054
-
-set.seed(1234)
-Type1ErrorStepLinearTimeTrend6Year <- PowerStepLinearTimeTrend(394, 394, 0.02100446, 0.02100446, 1000, 96, 0.05, 1, 2, 0.05, 0, 48, HistoricalTrial = HistoricalTrialMyeloma, 72, 72) #0.054
-
-#Graph the Type 1 Errors
-
-Years <- c(1, 2, 3, 4, 5, 6)
-StepLinearType1ErrorsYears <- c(Type1ErrorStepLinearTimeTrend1Year, Type1ErrorStepLinearTimeTrend2Year, Type1ErrorStepLinearTimeTrend3Year, Type1ErrorStepLinearTimeTrend4Year, TypeIErrorStepLinearTrendMyeloma,
-                                Type1ErrorStepLinearTimeTrend6Year)
+#Step Linear
 
 plot(Years, StepLinearType1ErrorsYears, type = "b", xlab = "Years Between Historical and Current Trial", ylab = "Type 1 Error", main = "Plot of Type 1 Error of the Current Trial When Borrowing
      Historical Data Occuring Various Years Ago, 
@@ -1339,36 +1445,34 @@ abline(h = TypeIErrorStepLinearTrendMyeloma, lty = "dotted", col = "purple")
 
 
 
-#GRAPH FOR CHANGING TIME BETWEEN TRIALS 
+
+
+#Power and type 1 error for all times between trials using all methods
 
 #Summary
 
-#Years
 Years <- c(1, 2, 3, 4, 5, 6)
 
-#Powers
 LinearPowersYears <- c(PowerLinear1Year, PowerLinear2Year, PowerLinear3Year, PowerLinear4Year, PowerLinearHistMyeloma, PowerLinear6Year)
+
 StepLinearPowersYears <- c(PowerStepLinear1Year, PowerStepLinear2Year, PowerStepLinear3Year, PowerStepLinear4Year, PowerStepLinearHistMyeloma, PowerStepLinear6Year)
 
-#Type 1 Errors
 LinearType1ErrorsYears <- c(Type1ErrorLinearTimeTrend1Year, Type1ErrorLinearTimeTrend2Year, Type1ErrorLinearTimeTrend3Year, Type1ErrorLinearTimeTrend4Year, TypeIErrorLinearTrendMyeloma, Type1ErrorLinearTimeTrend6Year)
+
 StepLinearType1ErrorsYears <- c(Type1ErrorStepLinearTimeTrend1Year, Type1ErrorStepLinearTimeTrend2Year, Type1ErrorStepLinearTimeTrend3Year, Type1ErrorStepLinearTimeTrend4Year, TypeIErrorStepLinearTrendMyeloma, Type1ErrorStepLinearTimeTrend6Year)
 
-DataHistTime <- as.data.frame(cbind(YearsBetweenTrials = Years, LinearPower = LinearPowersYears, LinearErrors = LinearType1ErrorsYears, 
-                                    StepLinearPower = StepLinearPowersYears , StepLinearError = StepLinearType1ErrorsYears))
+DataHistTime <- as.data.frame(cbind(LinearPowersYears,StepLinearPowersYears, LinearType1ErrorsYears, StepLinearType1ErrorsYears))
 
-DataHistTime
+#Graphs
 
 par(mfrow = c(1,2))
 
-#Graph for Powers
 
+#Graph for Powers
 YearsxAxis <- c(rep(Years, 2))
 PowersYears <- c(LinearPowersYears, StepLinearPowersYears)
 MethodsYears <- c(rep("Linear", 5),rep("StepLinear", 5))
 DataYears <- as.data.frame(cbind(Years = YearsxAxis, Power = PowersYears, Method = as.factor(MethodsYears)))
-
-
 
 #Plot the Powers
 plot(DataYears$Years, DataYears$Power, col = DataYears$Method, pch = 4, xlab = "Years Between Trials", ylab = "Power", 
@@ -1393,8 +1497,6 @@ legend(1, 0.808, legend=c("Linear Time", "Step and Linear Time"), col= c("red", 
 
 
 #Graph for Errors
-
-#Then plot the type 1 Errors
 
 YearsxAxis <- c(rep(Years, 2))
 ErrorsYears <- c(LinearType1ErrorsYears, StepLinearType1ErrorsYears)
